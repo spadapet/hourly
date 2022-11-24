@@ -2,12 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
-    <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dc254a9b-7ec5-467c-8e95-73568103a46f</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.SignalR" Version="1.4.0" />
+    <PackageReference Include="Azure.Data.Tables" Version="12.7.1" />
+    <PackageReference Include="Microsoft.Azure.SignalR" Version="1.19.1" />
+    <PackageReference Include="Microsoft.Extensions.Azure" Version="1.6.0" />
   </ItemGroup>
 
 </Project>

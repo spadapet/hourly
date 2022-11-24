@@ -1,18 +1,26 @@
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
+using Azure.Identity;
+using Microsoft.Extensions.Azure;
 
-var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddRazorPages();
-builder.Services.AddServerSideBlazor();
+internal class Program
+{
+    private static void Main(string[] args)
+    {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+        builder.Services.AddRazorPages();
+        builder.Services.AddServerSideBlazor();
 
-var app = builder.Build();
+        //string tableConnectionString = builder.Configuration.GetConnectionString("Table") ?? throw new InvalidOperationException("'Table' connection string missing");
+        builder.Services.AddAzureClients(clientBuilder =>
+        {
+            clientBuilder.AddTableServiceClient(new Uri("https://spadapet.table.core.windows.net/"));
+            clientBuilder.UseCredential(new DefaultAzureCredential());
+        });
 
-
-app.UseStaticFiles();
-
-app.UseRouting();
-
-app.MapBlazorHub();
-app.MapFallbackToPage("/_Host");
-
-app.Run();
+        WebApplication app = builder.Build();
+        app.UseStaticFiles();
+        app.UseRouting();
+        app.MapBlazorHub();
+        app.MapFallbackToPage("/_Host");
+        app.Run();
+    }
+}
