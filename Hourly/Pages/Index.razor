@@ -1,36 +1,3 @@
-﻿@page "/"
-@using Azure.Data.Tables;
-@using Azure.Identity;
-
-<h1>Clicked = @clicked</h1>
+﻿<h1>Clicked = @clicked</h1>
 <p>Name = @name</p>
 <button @onclick="ButtonClicked">My Button</button>
-
-@code
-{
-    private bool clicked = false;
-    private string name = "Loading...";
-
-    protected override async Task OnInitializedAsync()
-    {
-        try
-        {
-            TableServiceClient client = new TableServiceClient(new Uri("https://spadapet.table.core.windows.net/"), new DefaultAzureCredential());
-            TableClient table = client.GetTableClient("TestHourly");
-            var row = await table.GetEntityAsync<TableEntity>("a", "b");
-
-            this.name = (string)row.Value["Name"];
-        }
-        catch (Exception ex)
-        {
-            name = ex.ToString();
-        }
-
-        await base.OnInitializedAsync();
-    }
-
-    private void ButtonClicked()
-    {
-        this.clicked = true;
-    }
-}
