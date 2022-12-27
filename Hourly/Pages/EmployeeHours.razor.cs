@@ -1,37 +1,12 @@
-﻿using Azure.Data.Tables;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
-using System.Security.Principal;
+﻿using Microsoft.AspNetCore.Components;
 
 namespace Hourly.Pages
 {
-    [Route("/employee")]
-    public partial class EmployeeHours : ComponentBase
+    [Route("/employee/{UserName}/{UserKey}")]
+    public partial class EmployeeHours : TableComponentBase
     {
-        public bool authenticated;
-        public string name;
-        public string authType;
-
-        [CascadingParameter]
-        public Task<AuthenticationState> AuthenticationStateTask { get; set; }
-
-        [Inject]
-        public TableServiceClient TableServiceClient { get; set; }
-
-        [Inject]
-        public AuthenticationStateProvider AuthenticationStateProvider { get; set; }
-
         protected override async Task OnInitializedAsync()
         {
-            AuthenticationState user = await this.AuthenticationStateTask;
-
-            if (user?.User?.Identity is IIdentity identity)
-            {
-                this.authenticated = identity.IsAuthenticated;
-                this.name = identity.Name;
-                this.authType = identity.AuthenticationType;
-            }
-
             await base.OnInitializedAsync();
         }
 

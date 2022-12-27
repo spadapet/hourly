@@ -1,45 +1,60 @@
 using Azure.Identity;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.Azure;
-using Microsoft.Identity.Web;
 
-internal static class Program
+namespace Hourly
 {
-    public static IReadOnlyDictionary<string, string> NameToTable = new Dictionary<string, string>();
-
-    private static void Main(string[] args)
+    internal static class Program
     {
-        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-        builder.Services.AddAuthentication().AddOAuth()
-        builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-            .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
-        builder.Services.AddAuthorization(options =>
+        public struct TableEntry
         {
-            options.FallbackPolicy = options.DefaultPolicy;
-        });
+            public string TableName { get; }
+            public string UserKey { get; }
 
-        builder.Services.AddRazorPages();
-        builder.Services.AddServerSideBlazor()
-            .AddMicrosoftIdentityConsentHandler();
-
-        if (builder.Configuration["BlobServer"] is string blobServer && blobServer.Length != 0)
-        {
-            builder.Services.AddAzureClients(clientBuilder =>
+            public TableEntry(string tableName, string userKey)
             {
-                clientBuilder.AddTableServiceClient(new Uri(blobServer));
-                clientBuilder.UseCredential(new DefaultAzureCredential());
-            });
+                this.TableName = tableName;
+                this.UserKey = userKey;
+            }
         }
 
-        builder.Configuration.Bind("EmployeeTables", Program.NameToTable);
+        private static Dictionary<string, TableEntry> nameToTable = new();
+        public static IReadOnlyDictionary<string, TableEntry> NameToTable => Program.nameToTable;
 
-        WebApplication app = builder.Build();
-        app.UseStaticFiles();
-        app.UseRouting();
-        app.UseAuthentication();
-        app.UseAuthorization();
-        app.MapBlazorHub();
-        app.MapFallbackToPage("/_Host");
-        app.Run();
+        private static void Main(string[] args)
+        {
+            WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+            builder.Services.AddRazorPages();
+            builder.Services.AddServerSideBlazor();
+
+            if (builder.Configuration["BlobServer"] is string blobServer)
+            {
+                builder.Services.AddAzureClients(clientBuilder =>
+                {
+                    clientBuilder.AddTableServiceClient(new Uri(blobServer));
+                    clientBuilder.UseCredential(new DefaultAzureCredential());
+                });
+            }
+
+            if (builder.Configuration["TableNames"] is string tableEntries)
+            {
+                foreach (string tableEntry in tableEntries.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (tableEntry.Split(',') is string[] datas && datas.Length == 3 &&
+                        datas[0] is string userName && !string.IsNullOrEmpty(userName) &&
+                        datas[1] is string tableName && !string.IsNullOrEmpty(tableName) &&
+                        datas[2] is string userKey && !string.IsNullOrEmpty(userKey))
+                    {
+                        Program.nameToTable[userName] = new Program.TableEntry(tableName, userKey);
+                    }
+                }
+            }
+
+            WebApplication app = builder.Build();
+            app.UseStaticFiles();
+            app.UseRouting();
+            app.MapBlazorHub();
+            app.MapFallbackToPage("/_Host");
+            app.Run();
+        }
     }
 }

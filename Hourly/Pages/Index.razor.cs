@@ -10,7 +10,7 @@ namespace Hourly.Pages
 
         private void OnClickEmployeeHours()
         {
-            this.NavigationManager.NavigateTo("/employee");
+            this.NavigationManager.NavigateTo("/employee/testUser/testKey");
         }
     }
 }
