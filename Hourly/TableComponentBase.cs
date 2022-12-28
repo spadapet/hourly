@@ -6,6 +6,9 @@ namespace Hourly
     public abstract class TableComponentBase : ComponentBase
     {
         public string TableName { get; private set; }
+        public bool ReadOnly { get; private set; }
+        public TableClient TableClient { get; private set; }
+
 
         [Parameter]
         public string UserName { get; set; }
@@ -19,6 +22,8 @@ namespace Hourly
         protected override async Task OnParametersSetAsync()
         {
             this.TableName = null;
+            this.ReadOnly = true;
+            this.TableClient = null;
 
             if (!string.IsNullOrEmpty(this.UserName) &&
                 !string.IsNullOrEmpty(this.UserKey) &&
@@ -27,6 +32,8 @@ namespace Hourly
                 if (this.UserKey == entry.UserKey)
                 {
                     this.TableName = entry.TableName;
+                    this.ReadOnly = entry.ReadOnly;
+                    this.TableClient = this.TableServiceClient.GetTableClient(this.TableName);
                 }
             }
 

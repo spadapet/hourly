@@ -8,9 +8,24 @@ namespace Hourly.Pages
         [Inject]
         public NavigationManager NavigationManager { get; set; }
 
-        private void OnClickEmployeeHours()
+        protected override Task OnAfterRenderAsync(bool firstRender)
         {
-            this.NavigationManager.NavigateTo("/employee/testUser/testKey");
+            return base.OnAfterRenderAsync(firstRender);
+        }
+
+        protected override Task OnInitializedAsync()
+        {
+            return base.OnInitializedAsync();
+        }
+
+        protected override Task OnParametersSetAsync()
+        {
+            return base.OnParametersSetAsync();
+        }
+
+        private void OnClickTestEmployeeHours()
+        {
+            this.NavigationManager.NavigateTo($"/employee/{Program.TestUser}/{Program.TestKey}");
         }
     }
 }

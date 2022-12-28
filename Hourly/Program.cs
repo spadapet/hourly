@@ -9,16 +9,21 @@ namespace Hourly
         {
             public string TableName { get; }
             public string UserKey { get; }
+            public bool ReadOnly { get; }
 
-            public TableEntry(string tableName, string userKey)
+            public TableEntry(string tableName, string userKey, bool readOnly = false)
             {
                 this.TableName = tableName;
                 this.UserKey = userKey;
+                this.ReadOnly = readOnly;
             }
         }
 
         private static Dictionary<string, TableEntry> nameToTable = new();
         public static IReadOnlyDictionary<string, TableEntry> NameToTable => Program.nameToTable;
+        public static string TestUser => "testUser";
+        public static string TestKey => "testKey";
+        public static string TestTable => "TestHours";
 
         private static void Main(string[] args)
         {
@@ -47,6 +52,11 @@ namespace Hourly
                         Program.nameToTable[userName] = new Program.TableEntry(tableName, userKey);
                     }
                 }
+            }
+
+            if (builder.Environment.IsDevelopment())
+            {
+                Program.nameToTable[Program.TestUser] = new Program.TableEntry(Program.TestTable, Program.TestKey);
             }
 
             WebApplication app = builder.Build();

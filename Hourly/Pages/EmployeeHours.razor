@@ -1,5 +1,10 @@
-﻿@inherits Hourly.TableComponentBase;
+﻿@using Microsoft.AspNetCore.Components.Web
+@inherits Hourly.TableComponentBase;
 
-<h1>Employee</h1>
-<p>UserName = @UserName</p>
-<p>TableName = @TableName</p>
+<h2>Employee: @this.UserName</h2>
+<p><button class="firstFocus" disabled="@this.ReadOnly" style="width:20em; height:10em">Punch Clock</button></p>
+
+<p>Recent time entries:</p>
+
+
+<p>(none)</p>

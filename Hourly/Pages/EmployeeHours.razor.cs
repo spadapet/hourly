@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using Azure.Data.Tables;
+using Microsoft.AspNetCore.Components;
 
 namespace Hourly.Pages
 {
