@@ -1,70 +1,56 @@
+using Azure.Data.Tables;
 using Azure.Identity;
-using Microsoft.Extensions.Azure;
+using Hourly.Data;
 
-namespace Hourly
+namespace Hourly;
+
+public static class Program
 {
-    internal static class Program
+    public static bool IsDevelopment { get; private set; }
+    public static TimeZoneInfo TimeZone { get; private set; }
+
+    private static async Task Main(string[] args)
     {
-        public struct TableEntry
-        {
-            public string TableName { get; }
-            public string UserKey { get; }
-            public bool ReadOnly { get; }
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+        Settings settings = builder.Configuration.GetRequiredSection(nameof(Settings)).Get<Settings>();
+        TableServiceClient tableServiceClient = new(new Uri(settings.Server), new DefaultAzureCredential());
+        TableClient tableClient = tableServiceClient.GetTableClient(settings.Table);
 
-            public TableEntry(string tableName, string userKey, bool readOnly = false)
+        Program.IsDevelopment = builder.Environment.IsDevelopment();
+        Program.TimeZone = TimeZoneInfo.FindSystemTimeZoneById(settings.TimeZone);
+
+        builder.Services.AddRazorPages();
+        builder.Services.AddServerSideBlazor();
+        builder.Services.AddSingleton(tableClient);
+        builder.Services.AddSingleton(await Program.GetUsersAsync(tableClient));
+
+        WebApplication app = builder.Build();
+        app.UseStaticFiles();
+        app.UseRouting();
+        app.MapBlazorHub();
+        app.MapFallbackToPage("/_Host");
+
+        await app.RunAsync();
+    }
+
+    private static async Task<Users> GetUsersAsync(TableClient tableClient)
+    {
+        DataEntity usersEntity = await tableClient.GetEntityAsync<DataEntity>("0", "Users");
+        Users users = usersEntity.Deserialize<Users>();
+
+        foreach (KeyValuePair<string, User> kvp in users.ById)
+        {
+            kvp.Value.Id = kvp.Key;
+        }
+
+        foreach (var user in users.ById.Values.ToArray())
+        {
+            if (user.DevOnly && !Program.IsDevelopment)
             {
-                this.TableName = tableName;
-                this.UserKey = userKey;
-                this.ReadOnly = readOnly;
+                users.ById.Remove(user.Id);
             }
         }
 
-        private static Dictionary<string, TableEntry> nameToTable = new();
-        public static IReadOnlyDictionary<string, TableEntry> NameToTable => Program.nameToTable;
-        public static string TestUser => "testUser";
-        public static string TestKey => "testKey";
-        public static string TestTable => "TestHours";
-
-        private static void Main(string[] args)
-        {
-            WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-            builder.Services.AddRazorPages();
-            builder.Services.AddServerSideBlazor();
-
-            if (builder.Configuration["BlobServer"] is string blobServer)
-            {
-                builder.Services.AddAzureClients(clientBuilder =>
-                {
-                    clientBuilder.AddTableServiceClient(new Uri(blobServer));
-                    clientBuilder.UseCredential(new DefaultAzureCredential());
-                });
-            }
-
-            if (builder.Configuration["TableNames"] is string tableEntries)
-            {
-                foreach (string tableEntry in tableEntries.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
-                {
-                    if (tableEntry.Split(',') is string[] datas && datas.Length == 3 &&
-                        datas[0] is string userName && !string.IsNullOrEmpty(userName) &&
-                        datas[1] is string tableName && !string.IsNullOrEmpty(tableName) &&
-                        datas[2] is string userKey && !string.IsNullOrEmpty(userKey))
-                    {
-                        Program.nameToTable[userName] = new Program.TableEntry(tableName, userKey);
-                    }
-                }
-            }
-
-            if (builder.Environment.IsDevelopment())
-            {
-                Program.nameToTable[Program.TestUser] = new Program.TableEntry(Program.TestTable, Program.TestKey);
-            }
-
-            WebApplication app = builder.Build();
-            app.UseStaticFiles();
-            app.UseRouting();
-            app.MapBlazorHub();
-            app.MapFallbackToPage("/_Host");
-            app.Run();
-        }
+        return users;
     }
 }

@@ -1,4 +1,8 @@
 ﻿@using Microsoft.AspNetCore.Components.Web
 
 <h1>Hourly</h1>
-<button class="firstFocus" @onclick="this.OnClickTestEmployeeHours">Test Employee Hours</button>
+
+@if (Program.IsDevelopment)
+{
+    <button class="firstFocus" @onclick="this.OnClickTestEmployeeHours">Test Employee Hours</button>
+}

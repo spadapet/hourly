@@ -1,33 +1,20 @@
-﻿using Azure.Data.Tables;
+﻿using Hourly.Utility;
 using Microsoft.AspNetCore.Components;
 
-namespace Hourly.Pages
+namespace Hourly.Pages;
+
+[Route("/employee/{UserName}/{UserPassword}")]
+public sealed partial class EmployeeHours : TablePageBase
 {
-    [Route("/employee/{UserName}/{UserKey}")]
-    public partial class EmployeeHours : TableComponentBase
+    public int PayPeriodIndex { get; set; }
+
+    protected override async Task OnParametersSetAsync()
     {
-        protected override async Task OnInitializedAsync()
-        {
-            await base.OnInitializedAsync();
-        }
+        await base.OnParametersSetAsync();
 
-        protected override async Task OnAfterRenderAsync(bool firstRender)
-        {
-            //string name = string.Empty;
-            //
-            //try
-            //{
-            //    TableClient table = TableServiceClient.GetTableClient("TestHourly");
-            //    var row = await table.GetEntityAsync<TableEntity>("a", "b");
-            //
-            //    name = (string)row.Value["Name"];
-            //}
-            //catch (Exception ex)
-            //{
-            //    name = ex.ToString();
-            //}
-
-            await base.OnAfterRenderAsync(firstRender);
-        }
+        this.PayPeriodIndex = TimeUtility.CurrentPayPeriodIndex(this.User.PayPeriodType, this.User.FirstWorkDay);
     }
+
+    public string PayPeriodStartString => TimeUtility.DayToString(TimeUtility.IndexToPayPeriodStart(this.PayPeriodIndex, this.User.PayPeriodType, this.User.FirstWorkDay));
+    public string PayPeriodLastString => TimeUtility.DayToString(TimeUtility.IndexToPayPeriodStart(this.PayPeriodIndex + 1, this.User.PayPeriodType, this.User.FirstWorkDay).AddDays(-1));
 }
