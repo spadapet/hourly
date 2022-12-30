@@ -9,6 +9,7 @@ namespace Hourly.Components;
 public sealed partial class TimeChart : ComponentBase
 {
     public PayPeriod PayPeriod { get; set; }
+    public CancellationTokenSource CancelSource { get; set; }
 
     [Parameter]
     public User User { get; set; }
@@ -21,19 +22,35 @@ public sealed partial class TimeChart : ComponentBase
 
     protected override async Task OnParametersSetAsync()
     {
-        DateTime startDay = TimeUtility.IndexToPayPeriodStart(this.PayPeriodIndex, this.User.PayPeriodType, this.User.FirstWorkDay);
-        NullableResponse<DataEntity> dataEntity = await this.TableClient.GetEntityIfExistsAsync<DataEntity>(this.User.Partition, TimeUtility.DayToString(startDay));
-        PayPeriod period = null;
+        this.PayPeriod = null;
+        this.CancelSource?.Cancel();
+        this.CancelSource = new();
 
-        if (dataEntity.HasValue)
+        try
         {
-            period = dataEntity.Value.Deserialize<PayPeriod>();
-        }
-        else
-        {
-            period = new PayPeriod()
+            DateTime startDayLocal = this.User.IndexToPayPeriodStartLocal(this.PayPeriodIndex);
+            string rowKey = startDayLocal.DayToPersistString();
+            NullableResponse<DataEntity> existingEntity = await this.TableClient.GetEntityIfExistsAsync<DataEntity>(this.User.Partition, rowKey, cancellationToken: this.CancelSource.Token);
+
+            if (existingEntity.HasValue)
             {
-            };
+                this.PayPeriod = existingEntity.Value.Deserialize<PayPeriod>();
+            }
+            else
+            {
+                PayPeriod payPeriod = PayPeriodUtility.NewPayPeriod(startDayLocal, this.User.PayPeriodType);
+                DataEntity newEntity = new(this.User.Partition, rowKey, this.PayPeriod);
+                await this.TableClient.UpsertEntityAsync(newEntity, cancellationToken: this.CancelSource.Token);
+                this.PayPeriod = payPeriod;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // that's cool
+        }
+        finally
+        {
+            this.CancelSource = null;
         }
 
         await base.OnParametersSetAsync();

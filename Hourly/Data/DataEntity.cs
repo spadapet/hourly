@@ -13,6 +13,16 @@ public sealed class DataEntity : ITableEntity
 
     public string Data { get; set; }
 
+    public DataEntity()
+    { }
+
+    public DataEntity(string partitionKey, string rowKey, object data)
+    {
+        this.PartitionKey = partitionKey;
+        this.RowKey = rowKey;
+        this.Data = JsonConvert.SerializeObject(data);
+    }
+
     public T Deserialize<T>()
     {
         return JsonConvert.DeserializeObject<T>(this.Data);

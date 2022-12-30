@@ -7,6 +7,7 @@ namespace Hourly.Pages;
 public abstract class TablePageBase : ComponentBase
 {
     public User User { get; private set; }
+    public bool Admin { get; private set; }
 
     [Parameter]
     public string UserName { get; set; }
@@ -22,15 +23,17 @@ public abstract class TablePageBase : ComponentBase
 
     protected override async Task OnParametersSetAsync()
     {
-        User = null;
+        this.User = null;
+        this.Admin = false;
 
-        if (Users.ById.TryGetValue(UserName, out User user) && UserPassword == user.Password)
+        if (this.Users.ById.TryGetValue(this.UserName, out User user) && (this.UserPassword == user.Password || this.UserPassword == user.AdminPassword))
         {
-            User = user;
+            this.User = user;
+            this.Admin = (this.UserPassword == user.AdminPassword);
         }
         else
         {
-            throw new InvalidOperationException($"Unknown user: {UserName}");
+            throw new InvalidOperationException($"Unknown user: {this.UserName}");
         }
 
         await base.OnParametersSetAsync();

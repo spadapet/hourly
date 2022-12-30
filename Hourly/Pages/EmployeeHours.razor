@@ -1,8 +1,0 @@
-﻿@using Microsoft.AspNetCore.Components.Web
-@inherits TablePageBase;
-
-<h2>Employee: @this.UserName</h2>
-<p><button class="firstFocus" style="width:20em; height:10em">Punch Clock</button></p>
-
-<p>Pay period @this.PayPeriodStartString to @this.PayPeriodLastString</p>
-<Hourly.Components.TimeChart User="@this.User" PayPeriodIndex="@this.PayPeriodIndex" />

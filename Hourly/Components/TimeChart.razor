@@ -1,4 +1,31 @@
-﻿@using Microsoft.AspNetCore.Components.Web
+﻿@using Hourly.Data;
+@using Hourly.Utility;
+@using Microsoft.AspNetCore.Components.Web
 
-<p>Name: @this.User.Name</p>
-<p>Pay period: @this.PayPeriodIndex</p>
+<table>
+    <tr>
+        <th>Day</th>
+        <th>Start</th>
+        <th>End</th>
+        <th>Notes</th>
+    </tr>
+
+    @if (this.CancelSource != null)
+    {
+        <tr>
+            <td colspan="4">Loading...</td>
+        </tr>
+    }
+    else if (this.PayPeriod != null)
+    {
+        @foreach (Day day in this.PayPeriod.Days)
+        {
+            <tr>
+                <td>@day.DayLocal.DayToWeekdayDisplayString()</td>
+                <td>...</td>
+                <td>...</td>
+                <td></td>
+            </tr>
+        }
+    }
+</table>

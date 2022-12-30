@@ -1,0 +1,65 @@
+﻿@using Hourly.Components
+@using Microsoft.AspNetCore.Components.Web
+@inherits TablePageBase
+
+<p>Hourly for @this.User.Name</p>
+
+<p>
+    <select class="firstFocus" @bind="this.SelectedView">
+        <option value="@EmployeePage.ViewPunch">Punch Clock</option>
+        <option value="@EmployeePage.ViewSick">Sick Time</option>
+
+        @if (this.Admin)
+        {
+            <option value="@EmployeePage.ViewVacation">Vacation</option>
+            <option value="@EmployeePage.ViewHoliday">Holiday</option>
+        }
+
+        <option value="@EmployeePage.ViewTimeSheet">Time Sheet</option>
+    </select>
+</p>
+
+@switch (this.SelectedView)
+{
+    case EmployeePage.ViewSick:
+    case EmployeePage.ViewVacation:
+    case EmployeePage.ViewHoliday:
+    case EmployeePage.ViewTimeSheet:
+        <p>
+            <span>Pay period:
+                <button style="display:inline; padding-top:0.25em; padding-bottom:0.25em" @onclick="this.PrevPayPeriod" disabled="@(!this.HasPrevPayPeriod)">&lt;&lt;</button>
+                <b>@this.PayPeriodStartString</b> - <b>@this.PayPeriodLastString</b>
+                <button style="display:inline; padding-top:0.25em; padding-bottom:0.25em" @onclick="this.NextPayPeriod" disabled="@(!this.HasNextPayPeriod)">&gt;&gt;</button>
+                <span>&nbsp;</span>
+
+                @if (this.CanResetPayPeriod)
+                {
+                    <button style="display:inline; padding-top:0.25em; padding-bottom:0.25em" @onclick="this.ResetPayPeriod" disabled="@(!this.CanResetPayPeriod)">Reset</button>
+                }
+            </span>
+            </p>
+        break;
+}
+
+@switch (this.SelectedView)
+{
+    case EmployeePage.ViewPunch:
+        <p><button style="width:20em; height:10em">Punch Clock</button></p>
+        break;
+
+    case EmployeePage.ViewSick:
+        <p>Sick UI</p>
+        break;
+
+    case EmployeePage.ViewVacation:
+        <p>Vacation UI</p>
+        break;
+
+    case EmployeePage.ViewHoliday:
+        <p>Holiday UI</p>
+        break;
+
+    case EmployeePage.ViewTimeSheet:
+        <TimeChart User="@this.User" PayPeriodIndex="@this.PayPeriodIndex" />
+        break;
+}

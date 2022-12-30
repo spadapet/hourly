@@ -20,7 +20,7 @@ public enum TimeType
 
 public sealed class PayPeriod
 {
-    public DateTime FirstDay { get; set; }
+    public DateTime FirstDayLocal { get; set; }
     public int DayCount { get; set; }
     public List<Day> Days { get; } = new();
 }
@@ -28,6 +28,7 @@ public sealed class PayPeriod
 public sealed class Day
 {
     public string Notes { get; set; }
+    public DateTime DayLocal { get; set; }
     public List<Time> Times { get; set; } = new();
 }
 

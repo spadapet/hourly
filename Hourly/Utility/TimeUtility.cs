@@ -15,28 +15,38 @@ public static class TimeUtility
         }
     }
 
-    public static int CurrentPayPeriodIndex(PayPeriodType type, DateTime firstWorkDayLocal)
+    public static int CurrentPayPeriodIndex(this PayPeriodType type, DateTime firstWorkDayLocal)
     {
-        return TimeUtility.PayPeriodIndex(DateTime.UtcNow, type, firstWorkDayLocal);
+        return DateTime.UtcNow.PayPeriodIndex(type, firstWorkDayLocal);
     }
 
-    public static int PayPeriodIndex(DateTime timeUtc, PayPeriodType type, DateTime firstWorkDayLocal)
+    public static int PayPeriodIndex(this DateTime timeUtc, PayPeriodType type, DateTime firstWorkDayLocal)
     {
         DateTime dayLocal = TimeZoneInfo.ConvertTimeFromUtc(timeUtc, Program.TimeZone).Date;
         return (dayLocal - firstWorkDayLocal).Days / type.DaysPerPeriod();
     }
 
-    public static DateTime IndexToPayPeriodStart(int index, PayPeriodType type, DateTime firstWorkDayLocal)
+    public static DateTime IndexToPayPeriodStartLocal(int index, PayPeriodType type, DateTime firstWorkDayLocal)
     {
         return firstWorkDayLocal.AddDays(index * type.DaysPerPeriod());
     }
 
-    public static string DayToString(DateTime dayLocal)
+    public static string DayToDisplayString(this DateTime dayLocal)
+    {
+        return dayLocal.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture);
+    }
+
+    public static string DayToWeekdayDisplayString(this DateTime dayLocal)
+    {
+        return dayLocal.ToString("dddd", CultureInfo.CurrentCulture);
+    }
+
+    public static string DayToPersistString(this DateTime dayLocal)
     {
         return dayLocal.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
     }
 
-    public static DateTime StringToDay(string dayString)
+    public static DateTime PersistStringToDay(string dayString)
     {
         return DateTime.ParseExact(dayString, "yyyy-MM-dd", CultureInfo.InvariantCulture);
     }
