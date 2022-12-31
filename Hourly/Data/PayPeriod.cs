@@ -34,7 +34,8 @@ public sealed class Day
 
 public sealed class Time
 {
+    public string Notes { get; set; }
     public TimeType Type { get; set; }
-    public DateTime? StartUtc { get; set; }
-    public DateTime? EndUtc { get; set; }
+    public DateTime? StartLocal { get; set; }
+    public DateTime? EndLocal { get; set; }
 }

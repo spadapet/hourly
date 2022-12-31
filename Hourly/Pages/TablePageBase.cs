@@ -10,7 +10,7 @@ public abstract class TablePageBase : ComponentBase
     public bool Admin { get; private set; }
 
     [Parameter]
-    public string UserName { get; set; }
+    public string UserId { get; set; }
 
     [Parameter]
     public string UserPassword { get; set; }
@@ -26,14 +26,14 @@ public abstract class TablePageBase : ComponentBase
         this.User = null;
         this.Admin = false;
 
-        if (this.Users.ById.TryGetValue(this.UserName, out User user) && (this.UserPassword == user.Password || this.UserPassword == user.AdminPassword))
+        if (this.Users.ById.TryGetValue(this.UserId, out User user) && (this.UserPassword == user.Password || this.UserPassword == user.AdminPassword))
         {
             this.User = user;
             this.Admin = (this.UserPassword == user.AdminPassword);
         }
         else
         {
-            throw new InvalidOperationException($"Unknown user: {this.UserName}");
+            throw new InvalidOperationException($"Unknown user: {this.UserId}");
         }
 
         await base.OnParametersSetAsync();

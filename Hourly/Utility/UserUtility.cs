@@ -32,14 +32,19 @@ namespace Hourly.Utility
             return user.PayPeriodType.CurrentPayPeriodIndex(user.FirstWorkDayLocal);
         }
 
-        public static int PayPeriodIndex(this User user, DateTime timeUtc)
+        public static int PayPeriodIndex(this User user, DateTime timeLocal)
         {
-            return timeUtc.PayPeriodIndex(user.PayPeriodType, user.FirstWorkDayLocal);
+            return timeLocal.PayPeriodIndex(user.PayPeriodType, user.FirstWorkDayLocal);
         }
 
         public static DateTime IndexToPayPeriodStartLocal(this User user, int index)
         {
             return TimeUtility.IndexToPayPeriodStartLocal(index, user.PayPeriodType, user.FirstWorkDayLocal);
+        }
+
+        public static DateTime TimeToPayPeriodStartLocal(this User user, DateTime timeLocal)
+        {
+            return TimeUtility.TimeToPayPeriodStartLocal(timeLocal, user.PayPeriodType, user.FirstWorkDayLocal);
         }
     }
 }

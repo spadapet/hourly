@@ -7,6 +7,7 @@
         <th>Day</th>
         <th>Start</th>
         <th>End</th>
+        <th>Type</th>
         <th>Notes</th>
     </tr>
 
@@ -22,10 +23,45 @@
         {
             <tr>
                 <td>@day.DayLocal.DayToWeekdayDisplayString()</td>
-                <td>...</td>
-                <td>...</td>
-                <td></td>
+                <td colspan="3"><button @onclick="() => this.NewTime(day)">+</button></td>
+                <td><input @bind="day.Notes" @bind:event="onchange" /></td>
             </tr>
+
+            foreach (Time time in day.Times)
+            {
+                <tr>
+                    @if (this.Admin)
+                    {
+                        <td />
+                        <td><input @bind="time.StartLocal" type="time" /></td>
+                        <td><input @bind="time.EndLocal" type="time" /></td>
+                        <td>
+                            <select @bind="time.Type">
+                                <option value="Work">Work</option>
+                                <option value="Sick">Sick</option>
+                                <option value="Vacation">Vacation</option>
+                                <option value="Holiday">Holiday</option>
+                            </select>
+                        </td>
+                        <td><input @bind="time.Notes" /></td>
+                    }
+                    else
+                    {
+                        <td />
+                        <td>@(time.StartLocal.HasValue ? time.StartLocal.Value.TimeToDisplayString() : "--")</td>
+                        <td>@(time.EndLocal.HasValue ? time.EndLocal.Value.TimeToDisplayString() : "--")</td>
+                        <td>@time.Type</td>
+                        <td>@time.Notes</td>
+                    }
+                </tr>
+            }
         }
     }
 </table>
+
+<hr />
+<p>For all changes:</p>
+<p>
+    <button style="display:inline">Save</button>
+    <button style="display:inline">Reset</button>
+</p>

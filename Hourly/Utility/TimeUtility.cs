@@ -17,13 +17,14 @@ public static class TimeUtility
 
     public static int CurrentPayPeriodIndex(this PayPeriodType type, DateTime firstWorkDayLocal)
     {
-        return DateTime.UtcNow.PayPeriodIndex(type, firstWorkDayLocal);
+        return DateTime.Now.PayPeriodIndex(type, firstWorkDayLocal);
     }
 
-    public static int PayPeriodIndex(this DateTime timeUtc, PayPeriodType type, DateTime firstWorkDayLocal)
+    public static int PayPeriodIndex(this DateTime timeLocal, PayPeriodType type, DateTime firstWorkDayLocal)
     {
-        DateTime dayLocal = TimeZoneInfo.ConvertTimeFromUtc(timeUtc, Program.TimeZone).Date;
-        return (dayLocal - firstWorkDayLocal).Days / type.DaysPerPeriod();
+        return (timeLocal.Date > firstWorkDayLocal)
+            ? (timeLocal.Date - firstWorkDayLocal).Days / type.DaysPerPeriod()
+            : 0;
     }
 
     public static DateTime IndexToPayPeriodStartLocal(int index, PayPeriodType type, DateTime firstWorkDayLocal)
@@ -31,14 +32,24 @@ public static class TimeUtility
         return firstWorkDayLocal.AddDays(index * type.DaysPerPeriod());
     }
 
+    public static DateTime TimeToPayPeriodStartLocal(DateTime timeLocal, PayPeriodType type, DateTime firstWorkDayLocal)
+    {
+        return TimeUtility.IndexToPayPeriodStartLocal(timeLocal.PayPeriodIndex(type, firstWorkDayLocal), type, firstWorkDayLocal);
+    }
+
+    public static string DayToNoYearDisplayString(this DateTime dayLocal)
+    {
+        return dayLocal.ToString("MMM d", CultureInfo.InvariantCulture);
+    }
+
     public static string DayToDisplayString(this DateTime dayLocal)
     {
-        return dayLocal.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture);
+        return dayLocal.ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
     }
 
     public static string DayToWeekdayDisplayString(this DateTime dayLocal)
     {
-        return dayLocal.ToString("dddd", CultureInfo.CurrentCulture);
+        return dayLocal.ToString("MMM d, ddd", CultureInfo.CurrentCulture);
     }
 
     public static string DayToPersistString(this DateTime dayLocal)
@@ -46,8 +57,8 @@ public static class TimeUtility
         return dayLocal.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
     }
 
-    public static DateTime PersistStringToDay(string dayString)
+    public static string TimeToDisplayString(this DateTime timeLocal)
     {
-        return DateTime.ParseExact(dayString, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+        return timeLocal.ToString("h:mm tt", CultureInfo.InvariantCulture);
     }
 }
