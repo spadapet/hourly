@@ -5,6 +5,8 @@ namespace Hourly.Utility;
 
 public static class TimeUtility
 {
+    public static DateTime LocalNow => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, Program.TimeZone);
+
     public static int DaysPerPeriod(this PayPeriodType type)
     {
         switch (type)
@@ -17,7 +19,7 @@ public static class TimeUtility
 
     public static int CurrentPayPeriodIndex(this PayPeriodType type, DateTime firstWorkDayLocal)
     {
-        return DateTime.Now.PayPeriodIndex(type, firstWorkDayLocal);
+        return TimeUtility.LocalNow.PayPeriodIndex(type, firstWorkDayLocal);
     }
 
     public static int PayPeriodIndex(this DateTime timeLocal, PayPeriodType type, DateTime firstWorkDayLocal)
@@ -47,14 +49,19 @@ public static class TimeUtility
         return dayLocal.ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
     }
 
-    public static string DayToWeekdayDisplayString(this DateTime dayLocal)
+    public static string DayToRowKey(this DateTime dayLocal, bool admin)
     {
-        return dayLocal.ToString("MMM d, ddd", CultureInfo.CurrentCulture);
+        return dayLocal.DayToString() + (admin ? "-admin" : "-user");
     }
 
-    public static string DayToPersistString(this DateTime dayLocal)
+    public static string DayToString(this DateTime dayLocal)
     {
         return dayLocal.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    }
+
+    public static DateTime StringToDay(string localString)
+    {
+        return DateTime.ParseExact(localString, "yyyy-MM-dd", CultureInfo.InvariantCulture).Date;
     }
 
     public static string TimeToDisplayString(this DateTime timeLocal)

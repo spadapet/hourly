@@ -2,7 +2,20 @@
 
 <h1>Hourly</h1>
 
+<p>
+    User name:<br />
+    <input style="width:20em" @bind="this.UserId" type="text" />
+</p>
+
+<p>
+    Password:<br />
+    <input style="width:20em" @bind="this.Password" type="password" />
+</p>
+
+<button @onclick="this.Login">Login</button>
+
 @if (Program.IsDevelopment)
 {
-    <button class="firstFocus" @onclick="this.OnClickTestEmployeeHours">Test Employee Hours</button>
+    <p><button @onclick="this.OnClickTestEmployeeHours">Test Employee</button></p>
+    <p><button @onclick="this.OnClickTestEmployeeHours">Test Admin</button></p>
 }

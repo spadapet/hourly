@@ -20,54 +20,56 @@ public sealed partial class TimeChart : ComponentBase
     [Inject]
     public TableClient TableClient { get; set; }
 
-    private PayPeriod PayPeriod { get; set; }
-    private CancellationTokenSource CancelSource { get; set; }
-    private Dictionary<string, PayPeriod> payPeriods = new();
+    private long disabledCount;
+    private bool Disabled => Interlocked.Read(ref this.disabledCount) > 0;
+    private PayPeriod MergedPayPeriod { get; set; }
+    private PayPeriod UserPayPeriod { get; set; }
+    private PayPeriod PayPeriodToUpdate => this.Admin ? this.MergedPayPeriod : this.UserPayPeriod;
+    private PayPeriod PayPeriodToDisplay => this.MergedPayPeriod;
 
     protected override async Task OnParametersSetAsync()
     {
-        this.PayPeriod = null;
-        this.CancelSource?.Cancel();
-        this.CancelSource = new();
-
-        try
+        await this.DisableDuring(async () =>
         {
+            await this.SaveChanges();
+
             DateTime startDayLocal = this.User.TimeToPayPeriodStartLocal(this.ForDayLocal);
-            string rowKey = startDayLocal.DayToPersistString();
+            NullableResponse<DataEntity> existingAdminEntity = await this.TableClient.GetEntityIfExistsAsync<DataEntity>(this.User.Partition, startDayLocal.DayToRowKey(admin: true));
+            NullableResponse<DataEntity> existingUserEntity = await this.TableClient.GetEntityIfExistsAsync<DataEntity>(this.User.Partition, startDayLocal.DayToRowKey(admin: false));
 
-            if (this.payPeriods.TryGetValue(rowKey, out PayPeriod payPeriod))
-            {
-                this.PayPeriod = payPeriod;
-            }
-            else
-            {
-                NullableResponse<DataEntity> existingEntity = await this.TableClient.GetEntityIfExistsAsync<DataEntity>(this.User.Partition, rowKey, cancellationToken: this.CancelSource.Token);
+            this.MergedPayPeriod = existingAdminEntity.HasValue
+                ? existingAdminEntity.Value.Deserialize<PayPeriod>()
+                : PayPeriodUtility.NewPayPeriod(startDayLocal, this.User.PayPeriodType);
 
-                if (existingEntity.HasValue)
-                {
-                    this.PayPeriod = existingEntity.Value.Deserialize<PayPeriod>();
-                }
-                else
-                {
-                    payPeriod = PayPeriodUtility.NewPayPeriod(startDayLocal, this.User.PayPeriodType);
-                    DataEntity newEntity = new(this.User.Partition, rowKey, payPeriod);
-                    await this.TableClient.UpsertEntityAsync(newEntity, cancellationToken: this.CancelSource.Token);
-                    this.PayPeriod = payPeriod;
-                }
+            this.UserPayPeriod = existingAdminEntity.HasValue
+                ? existingUserEntity.Value.Deserialize<PayPeriod>()
+                : PayPeriodUtility.NewPayPeriod(startDayLocal, this.User.PayPeriodType);
 
-                this.payPeriods[rowKey] = this.PayPeriod;
-            }
-        }
-        catch (OperationCanceledException)
+            this.MergedPayPeriod.Merge(this.UserPayPeriod);
+        });
+    }
+
+    private async Task SaveChanges()
+    {
+        if (this.PayPeriodToUpdate != null)
         {
-            // Ignored
+            await this.DisableDuring(async () =>
+            {
+                DataEntity entity = new DataEntity(this.PayPeriodToUpdate, this.User, this.Admin);
+                Response response = await this.TableClient.UpsertEntityAsync(entity);
+                if (response.IsError)
+                {
+                    throw new InvalidOperationException($"Failed to save entity: {entity.PartitionKey}, {entity.RowKey}");
+                }
+            });
         }
-        finally
-        {
-            this.CancelSource = null;
-        }
+    }
 
-        await base.OnParametersSetAsync();
+    private async Task ResetChanges()
+    {
+        this.MergedPayPeriod = null;
+        this.UserPayPeriod = null;
+        await this.DisableDuring(this.OnParametersSetAsync);
     }
 
     private void NewTime(Day day)
@@ -76,5 +78,23 @@ public sealed partial class TimeChart : ComponentBase
         {
             Type = TimeType.Work,
         });
+    }
+
+    private void DeleteTime(Day day, Time time)
+    {
+        day.Times.Remove(time);
+    }
+
+    private async Task DisableDuring(Func<Task> taskFunc)
+    {
+        Interlocked.Increment(ref this.disabledCount);
+        try
+        {
+            await taskFunc();
+        }
+        finally
+        {
+            Interlocked.Decrement(ref this.disabledCount);
+        }
     }
 }

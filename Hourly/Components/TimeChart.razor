@@ -2,66 +2,84 @@
 @using Hourly.Utility;
 @using Microsoft.AspNetCore.Components.Web
 
-<table>
-    <tr>
-        <th>Day</th>
-        <th>Start</th>
-        <th>End</th>
-        <th>Type</th>
-        <th>Notes</th>
-    </tr>
-
-    @if (this.CancelSource != null)
-    {
+@if (this.PayPeriodToDisplay == null)
+{
+    <progress aria-label="Loading..." />
+}
+else if (!this.Admin)
+{
+    <table>
         <tr>
-            <td colspan="4">Loading...</td>
+            <th colspan="2">Day</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Type</th>
         </tr>
-    }
-    else if (this.PayPeriod != null)
-    {
-        @foreach (Day day in this.PayPeriod.Days)
+
+        @foreach (Day day in this.PayPeriodToDisplay.Days)
         {
             <tr>
-                <td>@day.DayLocal.DayToWeekdayDisplayString()</td>
-                <td colspan="3"><button @onclick="() => this.NewTime(day)">+</button></td>
-                <td><input @bind="day.Notes" @bind:event="onchange" /></td>
+                <td>@day.DayLocal.ToString("ddd"),</td>
+                <td>@day.DayLocal.ToString("MMM d")</td>
+                <td colspan="3" />
             </tr>
 
             foreach (Time time in day.Times)
             {
                 <tr>
-                    @if (this.Admin)
-                    {
-                        <td />
-                        <td><input @bind="time.StartLocal" type="time" /></td>
-                        <td><input @bind="time.EndLocal" type="time" /></td>
-                        <td>
-                            <select @bind="time.Type">
-                                <option value="Work">Work</option>
-                                <option value="Sick">Sick</option>
-                                <option value="Vacation">Vacation</option>
-                                <option value="Holiday">Holiday</option>
-                            </select>
-                        </td>
-                        <td><input @bind="time.Notes" /></td>
-                    }
-                    else
-                    {
-                        <td />
-                        <td>@(time.StartLocal.HasValue ? time.StartLocal.Value.TimeToDisplayString() : "--")</td>
-                        <td>@(time.EndLocal.HasValue ? time.EndLocal.Value.TimeToDisplayString() : "--")</td>
-                        <td>@time.Type</td>
-                        <td>@time.Notes</td>
-                    }
+                    <td colspan="2" />
+                    <td>@(time.StartLocal.TimeToDisplayString())</td>
+                    <td>@(time.EndLocal.HasValue ? time.EndLocal.Value.TimeToDisplayString() : "--")</td>
+                    <td>@(time.Type)</td>
                 </tr>
             }
         }
-    }
-</table>
+    </table>
+}
+else
+{
+    <table>
+        <tr>
+            <th colspan="2">Day</th>
+            <th></th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Type</th>
+        </tr>
 
-<hr />
-<p>For all changes:</p>
-<p>
-    <button style="display:inline">Save</button>
-    <button style="display:inline">Reset</button>
-</p>
+        @foreach (Day day in this.PayPeriodToDisplay.Days)
+        {
+            <tr>
+                <td>@day.DayLocal.ToString("ddd"),</td>
+                <td>@day.DayLocal.ToString("MMM d")</td>
+                <td colspan="4"><button @onclick="() => this.NewTime(day)" disabled="@this.Disabled">+</button></td>
+            </tr>
+
+            foreach (Time time in day.Times)
+            {
+                <tr>
+                    <td colspan="2"></td>
+                    <td><button @onclick="() => this.DeleteTime(day, time)" disabled="@this.Disabled">-</button></td>
+                    <td><input @bind="time.StartLocal" type="time" disabled="@this.Disabled" /></td>
+                    <td><input @bind="time.EndLocal" type="time" disabled="@this.Disabled" /></td>
+                    <td>
+                        <select @bind="time.Type" disabled="@this.Disabled">
+                            <option value="Work">Work</option>
+                            <option value="Sick">Sick</option>
+                            <option value="Vacation">Vacation</option>
+                            <option value="Holiday">Holiday</option>
+                        </select>
+                    </td>
+                </tr>
+            }
+        }
+    </table>
+
+    <p>Notes:</p>
+    <p><textarea rows="4" cols="40" @bind="this.MergedPayPeriod.Notes" @bind:event="onchange" disabled="@this.Disabled" /></p>
+    <hr />
+    <p>
+        <button style="display:inline" @onclick="this.SaveChanges" disabled="@this.Disabled">Save</button>
+        <button style="display:inline" @onclick="this.ResetChanges" disabled="@this.Disabled">Reset</button>
+    </p>
+}

@@ -5,8 +5,6 @@ public enum PayPeriodType
     None,
     Weekly,
     BiWeekly,
-    SemiMonthly,
-    Monthly,
 }
 
 public enum TimeType
@@ -20,22 +18,19 @@ public enum TimeType
 
 public sealed class PayPeriod
 {
-    public DateTime FirstDayLocal { get; set; }
-    public int DayCount { get; set; }
     public List<Day> Days { get; } = new();
+    public string Notes { get; set; }
 }
 
 public sealed class Day
 {
-    public string Notes { get; set; }
     public DateTime DayLocal { get; set; }
     public List<Time> Times { get; set; } = new();
 }
 
 public sealed class Time
 {
-    public string Notes { get; set; }
     public TimeType Type { get; set; }
-    public DateTime? StartLocal { get; set; }
+    public DateTime StartLocal { get; set; }
     public DateTime? EndLocal { get; set; }
 }

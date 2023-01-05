@@ -2,29 +2,15 @@
 @using Microsoft.AspNetCore.Components.Web
 @inherits TablePageBase
 
-@if (this.SelectedView != null)
+@if (this.User == null)
 {
-    <p>
-        <select style="display:inline" class="firstFocus" @bind="this.SelectedView">
-            <option value="@EmployeePage.ViewPunch">Punch clock</option>
-            <option value="@EmployeePage.ViewChart">Pay periods</option>
-        </select>
-        <span>for @this.User.Name</span>
-    </p>
+    <p>Loading...</p>
+    <progress />
 }
-
-@switch (this.SelectedView)
+else
 {
-    case null:
-        <p>Loading...</p>
-        break;
-
-    case EmployeePage.ViewPunch:
-        <p><button style="width:20em; height:10em">Punch Clock</button></p>
-        break;
-
-    case EmployeePage.ViewChart:
-        <PayPeriodSelector User="@this.User" @bind-ForDayLocal="this.ForDayLocal" />
-        <TimeChart User="@this.User" Admin="@this.Admin" ForDayLocal="@this.ForDayLocal" />
-        break;
+    <p>Hours for @this.User.Name</p>
+    <p><button style="width:20em; height:10em">Punch Clock</button></p>
+    <PayPeriodSelector User="@this.User" @bind-ForDayLocal="this.ForDayLocal" />
+    <TimeChart User="@this.User" Admin="@this.Admin" ForDayLocal="@this.ForDayLocal" />
 }
