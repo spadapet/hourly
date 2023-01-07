@@ -9,13 +9,7 @@ namespace Hourly.Components;
 public sealed partial class TimeChart : ComponentBase
 {
     [Parameter]
-    public User User { get; set; }
-
-    [Parameter]
-    public bool Admin { get; set; }
-
-    [Parameter]
-    public DateTime ForDayLocal { get; set; }
+    public ViewModel ViewModel { get; set; }
 
     [Inject]
     public TableClient TableClient { get; set; }
@@ -24,38 +18,42 @@ public sealed partial class TimeChart : ComponentBase
     private bool Disabled => Interlocked.Read(ref this.disabledCount) > 0;
     private PayPeriod MergedPayPeriod { get; set; }
     private PayPeriod UserPayPeriod { get; set; }
-    private PayPeriod PayPeriodToUpdate => this.Admin ? this.MergedPayPeriod : this.UserPayPeriod;
-    private PayPeriod PayPeriodToDisplay => this.MergedPayPeriod;
 
     protected override async Task OnParametersSetAsync()
     {
+        this.ViewModel.PunchClockAction = this.PunchClock;
+
         await this.DisableDuring(async () =>
         {
             await this.SaveChanges();
 
-            DateTime startDayLocal = this.User.TimeToPayPeriodStartLocal(this.ForDayLocal);
-            NullableResponse<DataEntity> existingAdminEntity = await this.TableClient.GetEntityIfExistsAsync<DataEntity>(this.User.Partition, startDayLocal.DayToRowKey(admin: true));
-            NullableResponse<DataEntity> existingUserEntity = await this.TableClient.GetEntityIfExistsAsync<DataEntity>(this.User.Partition, startDayLocal.DayToRowKey(admin: false));
+            DateTime startDayLocal = this.ViewModel.User.TimeToPayPeriodStartLocal(this.ViewModel.ForDayLocal);
+            NullableResponse<DataEntity> existingAdminEntity = await this.TableClient.GetEntityIfExistsAsync<DataEntity>(this.ViewModel.User.Partition, startDayLocal.DayToRowKey(admin: true));
+            NullableResponse<DataEntity> existingUserEntity = await this.TableClient.GetEntityIfExistsAsync<DataEntity>(this.ViewModel.User.Partition, startDayLocal.DayToRowKey(admin: false));
 
             this.MergedPayPeriod = existingAdminEntity.HasValue
                 ? existingAdminEntity.Value.Deserialize<PayPeriod>()
-                : PayPeriodUtility.NewPayPeriod(startDayLocal, this.User.PayPeriodType);
+                : PayPeriodUtility.NewPayPeriod(startDayLocal, this.ViewModel.User.PayPeriodType);
 
-            this.UserPayPeriod = existingAdminEntity.HasValue
+            this.UserPayPeriod = existingUserEntity.HasValue
                 ? existingUserEntity.Value.Deserialize<PayPeriod>()
-                : PayPeriodUtility.NewPayPeriod(startDayLocal, this.User.PayPeriodType);
+                : PayPeriodUtility.NewPayPeriod(startDayLocal, this.ViewModel.User.PayPeriodType);
 
             this.MergedPayPeriod.Merge(this.UserPayPeriod);
         });
+
+        await base.OnParametersSetAsync();
     }
 
     private async Task SaveChanges()
     {
-        if (this.PayPeriodToUpdate != null)
+        if ((this.ViewModel.Admin ? this.MergedPayPeriod : this.UserPayPeriod) is PayPeriod payPeriodToUpdate)
         {
+            payPeriodToUpdate = payPeriodToUpdate.Canonicalize();
+
             await this.DisableDuring(async () =>
             {
-                DataEntity entity = new DataEntity(this.PayPeriodToUpdate, this.User, this.Admin);
+                DataEntity entity = new(payPeriodToUpdate, this.ViewModel.User, this.ViewModel.Admin);
                 Response response = await this.TableClient.UpsertEntityAsync(entity);
                 if (response.IsError)
                 {
@@ -72,17 +70,23 @@ public sealed partial class TimeChart : ComponentBase
         await this.DisableDuring(this.OnParametersSetAsync);
     }
 
-    private void NewTime(Day day)
+    private static void NewTime(Day day)
     {
         day.Times.Add(new Time()
         {
             Type = TimeType.Work,
+            StartLocal = TimeUtility.LocalNow.MoveTimeToDay(day.DayLocal),
         });
     }
 
-    private void DeleteTime(Day day, Time time)
+    private static void DeleteTime(Day day, Time time)
     {
         day.Times.Remove(time);
+    }
+
+    public async Task PunchClock()
+    {
+        await Task.Yield();
     }
 
     private async Task DisableDuring(Func<Task> taskFunc)

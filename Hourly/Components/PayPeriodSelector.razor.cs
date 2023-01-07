@@ -7,35 +7,27 @@ namespace Hourly.Components;
 public sealed partial class PayPeriodSelector : ComponentBase
 {
     [Parameter]
-    public User User { get; set; }
+    public ViewModel ViewModel { get; set; }
 
-    [Parameter]
-    public DateTime ForDayLocal { get; set; }
-
-    [Parameter]
-    public EventCallback<DateTime> ForDayLocalChanged { get; set; }
-
-    private int PayPeriodIndex => this.User.PayPeriodIndex(this.ForDayLocal);
-    private string PayPeriodStartString => this.User.IndexToPayPeriodStartLocal(this.PayPeriodIndex).DayToNoYearDisplayString();
-    private string PayPeriodLastString => this.User.IndexToPayPeriodStartLocal(this.PayPeriodIndex + 1).AddDays(-1).DayToDisplayString();
+    private int PayPeriodIndex => this.ViewModel.User.PayPeriodIndex(this.ViewModel.ForDayLocal);
+    private string PayPeriodStartString => this.ViewModel.User.IndexToPayPeriodStartLocal(this.PayPeriodIndex).DayToNoYearDisplayString();
+    private string PayPeriodLastString => this.ViewModel.User.IndexToPayPeriodStartLocal(this.PayPeriodIndex + 1).AddDays(-1).DayToDisplayString();
     private bool HasPrevPayPeriod => this.PayPeriodIndex > 0;
-    private bool HasNextPayPeriod => this.PayPeriodIndex <= this.User.CurrentPayPeriodIndex() + 8;
+    private bool HasNextPayPeriod => this.PayPeriodIndex >= 0;
 
-    private async Task PrevPayPeriod()
+    private void PrevPayPeriod()
     {
         if (this.HasPrevPayPeriod)
         {
-            this.ForDayLocal = this.User.IndexToPayPeriodStartLocal(this.PayPeriodIndex - 1);
-            await this.ForDayLocalChanged.InvokeAsync(this.ForDayLocal);
+            this.ViewModel.ForDayLocal = this.ViewModel.User.IndexToPayPeriodStartLocal(this.PayPeriodIndex - 1);
         }
     }
 
-    private async Task NextPayPeriod()
+    private void NextPayPeriod()
     {
         if (this.HasNextPayPeriod)
         {
-            this.ForDayLocal = this.User.IndexToPayPeriodStartLocal(this.PayPeriodIndex + 1);
-            await this.ForDayLocalChanged.InvokeAsync(this.ForDayLocal);
+            this.ViewModel.ForDayLocal = this.ViewModel.User.IndexToPayPeriodStartLocal(this.PayPeriodIndex + 1);
         }
     }
 }

@@ -30,3 +30,13 @@
 {
     content: "An error has occurred."
 }
+
+.time-row.unfinished
+{
+    background-color: rgb(255, 0, 0, 0.375);
+}
+
+.time-row.finished
+{
+    background-color: rgb(255, 255, 0, 0.5);
+}

@@ -1,10 +1,15 @@
-﻿using Hourly.Utility;
-using Microsoft.AspNetCore.Components;
+﻿using Microsoft.AspNetCore.Components;
 
 namespace Hourly.Pages;
 
 [Route($"/employee/{{{nameof(EmployeePage.UserId)}}}/{{{nameof(EmployeePage.UserPassword)}}}")]
 public sealed partial class EmployeePage : TablePageBase
 {
-    public DateTime ForDayLocal { get; set; } = TimeUtility.LocalNow;
+    private async Task PunchClock()
+    {
+        if (this.ViewModel.PunchClockAction != null)
+        {
+            await this.ViewModel.PunchClockAction();
+        }
+    }
 }

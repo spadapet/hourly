@@ -2,33 +2,28 @@
 @using Hourly.Utility;
 @using Microsoft.AspNetCore.Components.Web
 
-@if (this.PayPeriodToDisplay == null)
+@if (this.MergedPayPeriod == null)
 {
     <progress aria-label="Loading..." />
 }
-else if (!this.Admin)
+else if (!this.ViewModel.Admin)
 {
-    <table>
-        <tr>
-            <th colspan="2">Day</th>
-            <th>Start</th>
-            <th>End</th>
-            <th>Type</th>
-        </tr>
-
-        @foreach (Day day in this.PayPeriodToDisplay.Days)
+    <table cellspacing="0" cellpadding="4">
+        @foreach (Day day in this.MergedPayPeriod.Days)
         {
             <tr>
-                <td>@day.DayLocal.ToString("ddd"),</td>
-                <td>@day.DayLocal.ToString("MMM d")</td>
-                <td colspan="3" />
+                <td><b>@day.DayLocal.ToString("ddd"),</b></td>
+                <td><b>@day.DayLocal.ToString("MMM d")</b></td>
+                <td colspan="4" />
             </tr>
 
             foreach (Time time in day.Times)
             {
-                <tr>
-                    <td colspan="2" />
+                <tr class="time-row @(time.EndLocal.HasValue ? "finished" : "unfinished")">
+                    <td></td>
+                    <td style="text-align:center">&bull;</td>
                     <td>@(time.StartLocal.TimeToDisplayString())</td>
+                    <td>to</td>
                     <td>@(time.EndLocal.HasValue ? time.EndLocal.Value.TimeToDisplayString() : "--")</td>
                     <td>@(time.Type)</td>
                 </tr>
@@ -39,27 +34,20 @@ else if (!this.Admin)
 else
 {
     <table>
-        <tr>
-            <th colspan="2">Day</th>
-            <th></th>
-            <th>Start</th>
-            <th>End</th>
-            <th>Type</th>
-        </tr>
-
-        @foreach (Day day in this.PayPeriodToDisplay.Days)
+        @foreach (Day day in this.MergedPayPeriod.Days)
         {
             <tr>
                 <td>@day.DayLocal.ToString("ddd"),</td>
                 <td>@day.DayLocal.ToString("MMM d")</td>
-                <td colspan="4"><button @onclick="() => this.NewTime(day)" disabled="@this.Disabled">+</button></td>
+                <td><button @onclick="() => TimeChart.NewTime(day)" disabled="@this.Disabled" style="width:2em">+</button></td>
+                <td colspan="3"></td>
             </tr>
 
             foreach (Time time in day.Times)
             {
                 <tr>
                     <td colspan="2"></td>
-                    <td><button @onclick="() => this.DeleteTime(day, time)" disabled="@this.Disabled">-</button></td>
+                    <td><button @onclick="() => TimeChart.DeleteTime(day, time)" disabled="@this.Disabled" style="width:2em">-</button></td>
                     <td><input @bind="time.StartLocal" type="time" disabled="@this.Disabled" /></td>
                     <td><input @bind="time.EndLocal" type="time" disabled="@this.Disabled" /></td>
                     <td>

@@ -58,9 +58,31 @@ public static class PayPeriodUtility
 
         foreach (Day day in mergeInto.Days)
         {
+            foreach (Time time in day.Times)
+            {
+                time.StartLocal = time.StartLocal.MoveTimeToDay(day.DayLocal);
+
+                if (time.EndLocal.HasValue)
+                {
+                    time.EndLocal = time.EndLocal.Value.MoveTimeToDay(day.DayLocal);
+                }
+            }
+
             day.Times.Sort((l, r) => l.StartLocal.CompareTo(r.StartLocal));
         }
 
         mergeInto.Days.Sort((l, r) => l.DayLocal.CompareTo(r.DayLocal));
+    }
+
+    public static PayPeriod Canonicalize(this PayPeriod payPeriod)
+    {
+        PayPeriod fixedPayPeriod = new()
+        {
+            Notes = payPeriod.Notes
+        };
+
+        fixedPayPeriod.Merge(payPeriod);
+
+        return fixedPayPeriod;
     }
 }

@@ -2,15 +2,20 @@
 @using Microsoft.AspNetCore.Components.Web
 @inherits TablePageBase
 
-@if (this.User == null)
+@if (this.ViewModel.User == null)
 {
     <p>Loading...</p>
     <progress />
 }
 else
 {
-    <p>Hours for @this.User.Name</p>
-    <p><button style="width:20em; height:10em">Punch Clock</button></p>
-    <PayPeriodSelector User="@this.User" @bind-ForDayLocal="this.ForDayLocal" />
-    <TimeChart User="@this.User" Admin="@this.Admin" ForDayLocal="@this.ForDayLocal" />
+    <p>Hours for @this.ViewModel.User.Name@(this.ViewModel.Admin ? " (admin)" : "")</p>
+
+    if (!this.ViewModel.Admin)
+    {
+        <p><button style="width:20em; height:10em" @onclick="this.PunchClock">Punch Clock</button></p>
+    }
+
+    <PayPeriodSelector ViewModel="@this.ViewModel" />
+    <TimeChart ViewModel="@this.ViewModel" />
 }

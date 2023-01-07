@@ -6,9 +6,6 @@ namespace Hourly.Pages;
 
 public abstract class TablePageBase : ComponentBase
 {
-    public User User { get; private set; }
-    public bool Admin { get; private set; }
-
     [Parameter]
     public string UserId { get; set; }
 
@@ -21,15 +18,22 @@ public abstract class TablePageBase : ComponentBase
     [Inject]
     private Users Users { get; set; }
 
+    public ViewModel ViewModel { get; }
+
+    protected TablePageBase()
+    {
+        this.ViewModel = new(this.StateHasChanged);
+    }
+
     protected override async Task OnParametersSetAsync()
     {
-        this.User = null;
-        this.Admin = false;
+        this.ViewModel.User = null;
+        this.ViewModel.Admin = false;
 
         if (this.Users.ById.TryGetValue(this.UserId, out User user) && (this.UserPassword == user.Password || this.UserPassword == user.AdminPassword))
         {
-            this.User = user;
-            this.Admin = (this.UserPassword == user.AdminPassword);
+            this.ViewModel.User = user;
+            this.ViewModel.Admin = (this.UserPassword == user.AdminPassword);
         }
         else
         {

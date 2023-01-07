@@ -9,12 +9,12 @@ public static class TimeUtility
 
     public static int DaysPerPeriod(this PayPeriodType type)
     {
-        switch (type)
+        return type switch
         {
-            case PayPeriodType.Weekly: return 7;
-            case PayPeriodType.BiWeekly: return 14;
-            default: throw new InvalidOperationException($"Pay period has no set number of days: {type}");
-        }
+            PayPeriodType.Weekly => 7,
+            PayPeriodType.BiWeekly => 14,
+            _ => throw new InvalidOperationException($"Pay period has no set number of days: {type}"),
+        };
     }
 
     public static int CurrentPayPeriodIndex(this PayPeriodType type, DateTime firstWorkDayLocal)
@@ -67,5 +67,10 @@ public static class TimeUtility
     public static string TimeToDisplayString(this DateTime timeLocal)
     {
         return timeLocal.ToString("h:mm tt", CultureInfo.InvariantCulture);
+    }
+
+    public static DateTime MoveTimeToDay(this DateTime timeLocal, DateTime dayLocal)
+    {
+        return new(dayLocal.Year, dayLocal.Month, dayLocal.Day, timeLocal.Hour, timeLocal.Minute, 0);
     }
 }
