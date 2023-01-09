@@ -9,9 +9,12 @@ public static class PayPeriodUtility
         return user.TimeToPayPeriodStartLocal(payPeriod.Days[0].DayLocal).DayToRowKey(admin);
     }
 
-    public static PayPeriod NewPayPeriod(DateTime startDayLocal, PayPeriodType type)
+    public static PayPeriod NewPayPeriod(DateTime startDayLocal, PayPeriodType type, double payRate)
     {
-        PayPeriod payPeriod = new();
+        PayPeriod payPeriod = new()
+        {
+            PayRate = payRate,
+        };
 
         for (int i = 0; i < type.DaysPerPeriod(); i++)
         {
@@ -78,7 +81,8 @@ public static class PayPeriodUtility
     {
         PayPeriod fixedPayPeriod = new()
         {
-            Notes = payPeriod.Notes
+            Notes = payPeriod.Notes,
+            PayRate = payPeriod.PayRate,
         };
 
         fixedPayPeriod.Merge(payPeriod);

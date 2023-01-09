@@ -19,6 +19,16 @@ public sealed partial class TimeChart : ComponentBase
     private PayPeriod MergedPayPeriod { get; set; }
     private PayPeriod UserPayPeriod { get; set; }
 
+    private enum TimeDisplayType
+    {
+        Regular,
+        Overtime,
+        Vacation,
+        Holiday,
+        Sick,
+        Total,
+    }
+
     protected override async Task OnParametersSetAsync()
     {
         this.ViewModel.PunchClockAction = this.PunchClock;
@@ -33,11 +43,11 @@ public sealed partial class TimeChart : ComponentBase
 
             this.MergedPayPeriod = existingAdminEntity.HasValue
                 ? existingAdminEntity.Value.Deserialize<PayPeriod>()
-                : PayPeriodUtility.NewPayPeriod(startDayLocal, this.ViewModel.User.PayPeriodType);
+                : PayPeriodUtility.NewPayPeriod(startDayLocal, this.ViewModel.User.PayPeriodType, this.ViewModel.User.PayRate);
 
             this.UserPayPeriod = existingUserEntity.HasValue
                 ? existingUserEntity.Value.Deserialize<PayPeriod>()
-                : PayPeriodUtility.NewPayPeriod(startDayLocal, this.ViewModel.User.PayPeriodType);
+                : PayPeriodUtility.NewPayPeriod(startDayLocal, this.ViewModel.User.PayPeriodType, this.ViewModel.User.PayRate);
 
             this.MergedPayPeriod.Merge(this.UserPayPeriod);
         });
@@ -54,7 +64,7 @@ public sealed partial class TimeChart : ComponentBase
             await this.DisableDuring(async () =>
             {
                 DataEntity entity = new(payPeriodToUpdate, this.ViewModel.User, this.ViewModel.Admin);
-                Response response = await this.TableClient.UpsertEntityAsync(entity);
+                Response response = await this.TableClient.UpsertEntityAsync(entity, TableUpdateMode.Replace);
                 if (response.IsError)
                 {
                     throw new InvalidOperationException($"Failed to save entity: {entity.PartitionKey}, {entity.RowKey}");
@@ -84,9 +94,77 @@ public sealed partial class TimeChart : ComponentBase
         day.Times.Remove(time);
     }
 
-    public async Task PunchClock()
+    private async Task PunchClock()
     {
-        await Task.Yield();
+        DateTime punchTime = TimeUtility.LocalNow;
+
+        await this.DisableDuring(async () =>
+        {
+            DateTime startDayLocal = this.ViewModel.User.TimeToPayPeriodStartLocal(punchTime);
+            NullableResponse<DataEntity> existingEntity = await this.TableClient.GetEntityIfExistsAsync<DataEntity>(this.ViewModel.User.Partition, startDayLocal.DayToRowKey(admin: false));
+
+            PayPeriod payPeriod = existingEntity.HasValue
+                ? existingEntity.Value.Deserialize<PayPeriod>()
+                : PayPeriodUtility.NewPayPeriod(startDayLocal, this.ViewModel.User.PayPeriodType, this.ViewModel.User.PayRate);
+
+            if (payPeriod.Days.FirstOrDefault(d => d.DayLocal.Date == punchTime.Date) is Day day)
+            {
+                if (day.Times.FirstOrDefault(t => t.Type == TimeType.Work && !t.EndLocal.HasValue) is Time existingTime)
+                {
+                    existingTime.EndLocal = punchTime;
+                }
+                else
+                {
+                    day.Times.Add(new Time()
+                    {
+                        Type = TimeType.Work,
+                        StartLocal = punchTime,
+                    });
+                }
+
+                DataEntity entity = new(payPeriod, this.ViewModel.User, admin: false);
+                Response response = await this.TableClient.UpsertEntityAsync(entity, TableUpdateMode.Replace);
+
+                if (response.IsError)
+                {
+                    throw new InvalidOperationException($"Failed to save entity: {entity.PartitionKey}, {entity.RowKey}");
+                }
+
+                this.MergedPayPeriod.Merge(payPeriod);
+                this.ViewModel.ForDayLocal = punchTime.Date;
+            }
+        });
+    }
+
+    private double HoursFor(TimeDisplayType type)
+    {
+        return type switch
+        {
+            TimeDisplayType.Regular => 1,
+            TimeDisplayType.Overtime => 2,
+            TimeDisplayType.Vacation => 3,
+            TimeDisplayType.Holiday => 4,
+            TimeDisplayType.Sick => 5,
+            TimeDisplayType.Total =>
+                this.HoursFor(TimeDisplayType.Regular) +
+                this.HoursFor(TimeDisplayType.Overtime) +
+                this.HoursFor(TimeDisplayType.Vacation) +
+                this.HoursFor(TimeDisplayType.Holiday) +
+                this.HoursFor(TimeDisplayType.Sick),
+            _ => throw new InvalidOperationException($"Unexpected TimeDisplayType: {type}")
+        };
+    }
+
+    private double PayFor(TimeDisplayType type)
+    {
+        return type switch
+        {
+            TimeDisplayType.Overtime => this.HoursFor(type) * this.MergedPayPeriod.PayRate * 1.5,
+            TimeDisplayType.Total =>
+                this.HoursFor(type) * this.MergedPayPeriod.PayRate +
+                this.HoursFor(TimeDisplayType.Overtime) * this.MergedPayPeriod.PayRate * 0.5,
+            _ => this.HoursFor(type) * this.MergedPayPeriod.PayRate
+        };
     }
 
     private async Task DisableDuring(Func<Task> taskFunc)

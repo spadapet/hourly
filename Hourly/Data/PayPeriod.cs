@@ -20,6 +20,8 @@ public sealed class PayPeriod
 {
     public List<Day> Days { get; } = new();
     public string Notes { get; set; }
+    public string PrivateNotes { get; set; }
+    public double PayRate { get; set; }
 }
 
 public sealed class Day

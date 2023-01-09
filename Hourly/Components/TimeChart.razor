@@ -33,6 +33,11 @@ else if (!this.ViewModel.Admin)
 }
 else
 {
+    <p>
+        <button style="display:inline" @onclick="this.SaveChanges" disabled="@this.Disabled">Save</button>
+        <button style="display:inline" @onclick="this.ResetChanges" disabled="@this.Disabled">Reset</button>
+    </p>
+
     <table>
         @foreach (Day day in this.MergedPayPeriod.Days)
         {
@@ -63,11 +68,54 @@ else
         }
     </table>
 
-    <p>Notes:</p>
-    <p><textarea rows="4" cols="40" @bind="this.MergedPayPeriod.Notes" @bind:event="onchange" disabled="@this.Disabled" /></p>
     <hr />
+
+    <p>Rate is @(this.MergedPayPeriod.PayRate.ToString("C2")), overtime is @((this.MergedPayPeriod.PayRate * 1.5).ToString("C"))</p>
+    <table style="border-collapse:collapse" class="totals">
+        <tr>
+            <td>Regular</td>
+            <td>@(this.HoursFor(TimeDisplayType.Regular).ToString("N2")) hours</td>
+            <td>= @(this.PayFor(TimeDisplayType.Regular).ToString("C2"))</td>
+        </tr>
+        <tr>
+            <td>Overtime</td>
+            <td>@(this.HoursFor(TimeDisplayType.Overtime).ToString("N2")) hours</td>
+            <td>= @(this.PayFor(TimeDisplayType.Overtime).ToString("C2"))</td>
+        </tr>
+        <tr>
+            <td>Vacation</td>
+            <td>@(this.HoursFor(TimeDisplayType.Vacation).ToString("N2")) hours</td>
+            <td>= @(this.PayFor(TimeDisplayType.Vacation).ToString("C2"))</td>
+        </tr>
+        <tr>
+            <td>Holiday</td>
+            <td>@(this.HoursFor(TimeDisplayType.Holiday).ToString("N2")) hours</td>
+            <td>= @(this.PayFor(TimeDisplayType.Holiday).ToString("C2"))</td>
+        </tr>
+        <tr>
+            <td>Sick</td>
+            <td>@(this.HoursFor(TimeDisplayType.Sick).ToString("N2")) hours</td>
+            <td>= @(this.PayFor(TimeDisplayType.Sick).ToString("C2"))</td>
+        </tr>
+        <tr class="last-row">
+            <td><b>Total</b></td>
+            <td><b>@(this.HoursFor(TimeDisplayType.Total).ToString("N2")) hours</b></td>
+            <td><b>= @(this.PayFor(TimeDisplayType.Total).ToString("C2"))</b></td>
+        </tr>
+    </table>
+
+    <hr />
+
     <p>
-        <button style="display:inline" @onclick="this.SaveChanges" disabled="@this.Disabled">Save</button>
-        <button style="display:inline" @onclick="this.ResetChanges" disabled="@this.Disabled">Reset</button>
+        <span>Notes:</span><br />
+        <textarea rows="2" cols="40" @bind="this.MergedPayPeriod.Notes" @bind:event="onchange" disabled="@this.Disabled" />
     </p>
+
+    if (this.ViewModel.Admin)
+    {
+        <p>
+            <span>Private notes:</span><br />
+            <textarea rows="2" cols="40" @bind="this.MergedPayPeriod.PrivateNotes" @bind:event="onchange" disabled="@this.Disabled" />
+        </p>
+    }
 }

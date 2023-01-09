@@ -8,6 +8,7 @@ public sealed class User
     public string Partition { get; set; } // in storage table
     public PayPeriodType PayPeriodType { get; set; }
     public DateTime FirstWorkDayLocal { get; set; }
+    public double PayRate { get; set; }
 }
 
 public sealed class Users

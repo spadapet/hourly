@@ -20,6 +20,7 @@ public static class UserUtility
                 Partition = "Test",
                 PayPeriodType = PayPeriodType.Weekly,
                 FirstWorkDayLocal = TimeUtility.StringToDay("2022-10-29"),
+                PayRate = 25,
             };
         }
 
