@@ -30,4 +30,9 @@ public sealed partial class PayPeriodSelector : ComponentBase
             this.ViewModel.ForDayLocal = this.ViewModel.User.IndexToPayPeriodStartLocal(this.PayPeriodIndex + 1);
         }
     }
+
+    private void ThisPayPeriod()
+    {
+        this.ViewModel.ForDayLocal = TimeUtility.LocalDate;
+    }
 }

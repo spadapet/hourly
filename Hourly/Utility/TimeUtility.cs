@@ -5,7 +5,8 @@ namespace Hourly.Utility;
 
 public static class TimeUtility
 {
-    public static DateTime LocalNow => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, Program.TimeZone);
+    public static DateTime LocalNow => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, Program.TimeZone).StripSeconds();
+    public static DateTime LocalDate => TimeUtility.LocalNow.Date;
 
     public static int DaysPerPeriod(this PayPeriodType type)
     {
@@ -19,7 +20,7 @@ public static class TimeUtility
 
     public static int CurrentPayPeriodIndex(this PayPeriodType type, DateTime firstWorkDayLocal)
     {
-        return TimeUtility.LocalNow.PayPeriodIndex(type, firstWorkDayLocal);
+        return TimeUtility.LocalDate.PayPeriodIndex(type, firstWorkDayLocal);
     }
 
     public static int PayPeriodIndex(this DateTime timeLocal, PayPeriodType type, DateTime firstWorkDayLocal)
@@ -72,5 +73,10 @@ public static class TimeUtility
     public static DateTime MoveTimeToDay(this DateTime timeLocal, DateTime dayLocal)
     {
         return new(dayLocal.Year, dayLocal.Month, dayLocal.Day, timeLocal.Hour, timeLocal.Minute, 0);
+    }
+
+    public static DateTime StripSeconds(this DateTime timeLocal)
+    {
+        return new(timeLocal.Year, timeLocal.Month, timeLocal.Day, timeLocal.Hour, timeLocal.Minute, 0);
     }
 }

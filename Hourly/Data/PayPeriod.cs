@@ -2,6 +2,8 @@
 
 public enum PayPeriodType
 {
+    // NO CHANGES ALLOWED EXCEPT APPENDING.
+    // The integer values could be persisted.
     None,
     Weekly,
     BiWeekly,
@@ -9,11 +11,14 @@ public enum PayPeriodType
 
 public enum TimeType
 {
+    // NO CHANGES ALLOWED EXCEPT APPENDING.
+    // The integer values could be persisted.
     None,
     Work,
     Sick,
     Vacation,
     Holiday,
+    Deleted,
 }
 
 public sealed class PayPeriod

@@ -71,6 +71,7 @@ public static class PayPeriodUtility
                 }
             }
 
+            day.Times.RemoveAll(t => t.EndLocal.HasValue && t.EndLocal.Value < t.StartLocal);
             day.Times.Sort((l, r) => l.StartLocal.CompareTo(r.StartLocal));
         }
 
@@ -82,11 +83,35 @@ public static class PayPeriodUtility
         PayPeriod fixedPayPeriod = new()
         {
             Notes = payPeriod.Notes,
+            PrivateNotes = payPeriod.PrivateNotes,
             PayRate = payPeriod.PayRate,
         };
 
         fixedPayPeriod.Merge(payPeriod);
 
         return fixedPayPeriod;
+    }
+
+    public static void PunchClock(this PayPeriod payPeriod, DateTime punchTime)
+    {
+        if (payPeriod.Days.FirstOrDefault(d => d.DayLocal.Date == punchTime.Date) is Day day)
+        {
+            if (day.Times.FirstOrDefault(t => t.Type == TimeType.Work && !t.EndLocal.HasValue) is Time existingTime)
+            {
+                existingTime.EndLocal = punchTime;
+            }
+            else
+            {
+                day.Times.Add(new Time()
+                {
+                    Type = TimeType.Work,
+                    StartLocal = punchTime,
+                });
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException($"Pay period is missing day: {punchTime}");
+        }
     }
 }

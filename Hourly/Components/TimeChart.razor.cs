@@ -3,6 +3,7 @@ using Azure.Data.Tables;
 using Hourly.Data;
 using Hourly.Utility;
 using Microsoft.AspNetCore.Components;
+using System.Runtime.CompilerServices;
 
 namespace Hourly.Components;
 
@@ -38,46 +39,53 @@ public sealed partial class TimeChart : ComponentBase
             await this.SaveChanges();
 
             DateTime startDayLocal = this.ViewModel.User.TimeToPayPeriodStartLocal(this.ViewModel.ForDayLocal);
-            NullableResponse<DataEntity> existingAdminEntity = await this.TableClient.GetEntityIfExistsAsync<DataEntity>(this.ViewModel.User.Partition, startDayLocal.DayToRowKey(admin: true));
-            NullableResponse<DataEntity> existingUserEntity = await this.TableClient.GetEntityIfExistsAsync<DataEntity>(this.ViewModel.User.Partition, startDayLocal.DayToRowKey(admin: false));
-
-            this.MergedPayPeriod = existingAdminEntity.HasValue
-                ? existingAdminEntity.Value.Deserialize<PayPeriod>()
-                : PayPeriodUtility.NewPayPeriod(startDayLocal, this.ViewModel.User.PayPeriodType, this.ViewModel.User.PayRate);
-
-            this.UserPayPeriod = existingUserEntity.HasValue
-                ? existingUserEntity.Value.Deserialize<PayPeriod>()
-                : PayPeriodUtility.NewPayPeriod(startDayLocal, this.ViewModel.User.PayPeriodType, this.ViewModel.User.PayRate);
-
+            this.MergedPayPeriod = await this.FetchPayPeriod(startDayLocal, admin: true);
+            this.UserPayPeriod = await this.FetchPayPeriod(startDayLocal, admin: false);
             this.MergedPayPeriod.Merge(this.UserPayPeriod);
-        });
+        }, runIfDisabled: false);
 
         await base.OnParametersSetAsync();
     }
 
+    private async Task<PayPeriod> FetchPayPeriod(DateTime startDayLocal, bool admin)
+    {
+        NullableResponse<DataEntity> entity = await this.TableClient.GetEntityIfExistsAsync<DataEntity>(this.ViewModel.User.Partition, startDayLocal.DayToRowKey(admin));
+
+        PayPeriod payPeriod = entity.HasValue
+            ? entity.Value.Deserialize<PayPeriod>().Canonicalize()
+            : PayPeriodUtility.NewPayPeriod(startDayLocal, this.ViewModel.User.PayPeriodType, this.ViewModel.User.PayRate);
+
+        return payPeriod;
+    }
+
     private async Task SaveChanges()
     {
-        if ((this.ViewModel.Admin ? this.MergedPayPeriod : this.UserPayPeriod) is PayPeriod payPeriodToUpdate)
+        if (this.ViewModel.Admin && this.MergedPayPeriod is PayPeriod payPeriodToUpdate)
         {
-            payPeriodToUpdate = payPeriodToUpdate.Canonicalize();
-
-            await this.DisableDuring(async () =>
-            {
-                DataEntity entity = new(payPeriodToUpdate, this.ViewModel.User, this.ViewModel.Admin);
-                Response response = await this.TableClient.UpsertEntityAsync(entity, TableUpdateMode.Replace);
-                if (response.IsError)
-                {
-                    throw new InvalidOperationException($"Failed to save entity: {entity.PartitionKey}, {entity.RowKey}");
-                }
-            });
+            await this.SaveChanges(payPeriodToUpdate, admin: true);
         }
+    }
+
+    private async Task SaveChanges(PayPeriod payPeriod, bool admin)
+    {
+        payPeriod = payPeriod.Canonicalize();
+
+        await this.DisableDuring(async () =>
+        {
+            DataEntity entity = new(payPeriod, this.ViewModel.User, admin);
+            Response response = await this.TableClient.UpsertEntityAsync(entity, TableUpdateMode.Replace);
+            if (response.IsError)
+            {
+                throw new InvalidOperationException($"Failed to save entity: {entity.PartitionKey}, {entity.RowKey}");
+            }
+        });
     }
 
     private async Task ResetChanges()
     {
         this.MergedPayPeriod = null;
         this.UserPayPeriod = null;
-        await this.DisableDuring(this.OnParametersSetAsync);
+        await this.OnParametersSetAsync();
     }
 
     private static void NewTime(Day day)
@@ -89,9 +97,18 @@ public sealed partial class TimeChart : ComponentBase
         });
     }
 
-    private static void DeleteTime(Day day, Time time)
+    private void DeleteTime(Day day, Time time)
     {
-        day.Times.Remove(time);
+        if (this.UserPayPeriod?.Days.FirstOrDefault(d => d.DayLocal == day.DayLocal) is Day userDay && userDay.Times.Contains(time))
+        {
+            // The employee created this work time, so it should be marked as deleted rather than actually deleted.
+            // Otherwise it's just going to show up again.
+            time.Type = TimeType.Deleted;
+        }
+        else
+        {
+            day.Times.Remove(time);
+        }
     }
 
     private async Task PunchClock()
@@ -101,38 +118,10 @@ public sealed partial class TimeChart : ComponentBase
         await this.DisableDuring(async () =>
         {
             DateTime startDayLocal = this.ViewModel.User.TimeToPayPeriodStartLocal(punchTime);
-            NullableResponse<DataEntity> existingEntity = await this.TableClient.GetEntityIfExistsAsync<DataEntity>(this.ViewModel.User.Partition, startDayLocal.DayToRowKey(admin: false));
+            PayPeriod payPeriod = await this.FetchPayPeriod(startDayLocal, admin: false);
+            payPeriod.PunchClock(punchTime);
 
-            PayPeriod payPeriod = existingEntity.HasValue
-                ? existingEntity.Value.Deserialize<PayPeriod>()
-                : PayPeriodUtility.NewPayPeriod(startDayLocal, this.ViewModel.User.PayPeriodType, this.ViewModel.User.PayRate);
-
-            if (payPeriod.Days.FirstOrDefault(d => d.DayLocal.Date == punchTime.Date) is Day day)
-            {
-                if (day.Times.FirstOrDefault(t => t.Type == TimeType.Work && !t.EndLocal.HasValue) is Time existingTime)
-                {
-                    existingTime.EndLocal = punchTime;
-                }
-                else
-                {
-                    day.Times.Add(new Time()
-                    {
-                        Type = TimeType.Work,
-                        StartLocal = punchTime,
-                    });
-                }
-
-                DataEntity entity = new(payPeriod, this.ViewModel.User, admin: false);
-                Response response = await this.TableClient.UpsertEntityAsync(entity, TableUpdateMode.Replace);
-
-                if (response.IsError)
-                {
-                    throw new InvalidOperationException($"Failed to save entity: {entity.PartitionKey}, {entity.RowKey}");
-                }
-
-                this.MergedPayPeriod.Merge(payPeriod);
-                this.ViewModel.ForDayLocal = punchTime.Date;
-            }
+            await this.SaveChanges(payPeriod, admin: false);
         });
     }
 
@@ -167,16 +156,19 @@ public sealed partial class TimeChart : ComponentBase
         };
     }
 
-    private async Task DisableDuring(Func<Task> taskFunc)
+    private async Task DisableDuring(Func<Task> taskFunc, bool runIfDisabled = true)
     {
-        Interlocked.Increment(ref this.disabledCount);
-        try
+        if (!this.Disabled || runIfDisabled)
         {
-            await taskFunc();
-        }
-        finally
-        {
-            Interlocked.Decrement(ref this.disabledCount);
+            Interlocked.Increment(ref this.disabledCount);
+            try
+            {
+                await taskFunc();
+            }
+            finally
+            {
+                Interlocked.Decrement(ref this.disabledCount);
+            }
         }
     }
 }

@@ -15,7 +15,7 @@ public sealed class ViewModel
     public User User { get; set; }
     public bool Admin { get; set; }
 
-    private DateTime forDayLocal = TimeUtility.LocalNow.Date;
+    private DateTime forDayLocal = TimeUtility.LocalDate;
     public DateTime ForDayLocal
     {
         get => this.forDayLocal;

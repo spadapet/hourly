@@ -2,12 +2,13 @@
 @using Hourly.Utility;
 @using Microsoft.AspNetCore.Components.Web
 
-<p>Show pay period for <input style="display:inline" type="date" @bind="@this.ViewModel.ForDayLocal" /></p>
+<p>Show pay period for <input style="display:inline" type="date" @bind="@this.ViewModel.ForDayLocal" min="@TimeUtility.DayToString(this.ViewModel.User.FirstWorkDayLocal)" /></p>
 
 <p>
     <span>
         <button style="display:inline; padding:0.25em 0.5em" @onclick="this.PrevPayPeriod" disabled="@(!this.HasPrevPayPeriod)">&lt;</button>
         <b>&nbsp;@this.PayPeriodStartString</b> - <b>@this.PayPeriodLastString&nbsp;</b>
         <button style="display:inline; padding:0.25em 0.5em" @onclick="this.NextPayPeriod" disabled="@(!this.HasNextPayPeriod)">&gt;</button>
+        <button style="display:inline; padding:0.25em 0.5em" @onclick="this.ThisPayPeriod" disabled="@(!this.HasNextPayPeriod || this.PayPeriodIndex == this.ViewModel.User.CurrentPayPeriodIndex())">Today</button>
     </span>
 </p>

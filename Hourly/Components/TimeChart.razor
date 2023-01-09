@@ -17,7 +17,7 @@ else if (!this.ViewModel.Admin)
                 <td colspan="4" />
             </tr>
 
-            foreach (Time time in day.Times)
+            foreach (Time time in day.Times.Where(t => t.Type != TimeType.Deleted))
             {
                 <tr class="time-row @(time.EndLocal.HasValue ? "finished" : "unfinished")">
                     <td></td>
@@ -25,13 +25,13 @@ else if (!this.ViewModel.Admin)
                     <td>@(time.StartLocal.TimeToDisplayString())</td>
                     <td>to</td>
                     <td>@(time.EndLocal.HasValue ? time.EndLocal.Value.TimeToDisplayString() : "--")</td>
-                    <td>@(time.Type)</td>
+                    <td>@(time.Type)@(time.EndLocal.HasValue ? (", " + (time.EndLocal.Value - time.StartLocal).TotalHours.ToString("N2") + " hours" ) : "")</td>
                 </tr>
             }
         }
     </table>
 }
-else
+else // Admin
 {
     <p>
         <button style="display:inline" @onclick="this.SaveChanges" disabled="@this.Disabled">Save</button>
@@ -48,11 +48,11 @@ else
                 <td colspan="3"></td>
             </tr>
 
-            foreach (Time time in day.Times)
+            foreach (Time time in day.Times.Where(t => t.Type != TimeType.Deleted))
             {
                 <tr>
                     <td colspan="2"></td>
-                    <td><button @onclick="() => TimeChart.DeleteTime(day, time)" disabled="@this.Disabled" style="width:2em">-</button></td>
+                    <td><button @onclick="() => this.DeleteTime(day, time)" disabled="@this.Disabled" style="width:2em">-</button></td>
                     <td><input @bind="time.StartLocal" type="time" disabled="@this.Disabled" /></td>
                     <td><input @bind="time.EndLocal" type="time" disabled="@this.Disabled" /></td>
                     <td>
@@ -67,7 +67,10 @@ else
             }
         }
     </table>
+}
 
+@if (this.MergedPayPeriod != null)
+{
     <hr />
 
     <p>Rate is @(this.MergedPayPeriod.PayRate.ToString("C2")), overtime is @((this.MergedPayPeriod.PayRate * 1.5).ToString("C"))</p>
@@ -108,10 +111,17 @@ else
 
     <p>
         <span>Notes:</span><br />
-        <textarea rows="2" cols="40" @bind="this.MergedPayPeriod.Notes" @bind:event="onchange" disabled="@this.Disabled" />
+        @if (this.ViewModel.Admin)
+        {
+            <textarea rows="2" cols="40" @bind="this.MergedPayPeriod.Notes" @bind:event="onchange" disabled="@this.Disabled" />
+        }
+        else
+        {
+            <span>@this.MergedPayPeriod.Notes</span>
+        }
     </p>
 
-    if (this.ViewModel.Admin)
+    @if (this.ViewModel.Admin)
     {
         <p>
             <span>Private notes:</span><br />
