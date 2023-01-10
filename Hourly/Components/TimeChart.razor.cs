@@ -125,21 +125,68 @@ public sealed partial class TimeChart : ComponentBase
         });
     }
 
+    private double HoursFor(params TimeType[] types)
+    {
+        double hours = 0;
+
+        foreach (Day day in this.MergedPayPeriod.Days)
+        {
+            foreach (Time time in day.Times.Where(t => Array.IndexOf(types, t.Type) != -1 && t.EndLocal.HasValue && t.EndLocal.Value > t.StartLocal))
+            {
+                hours += (time.EndLocal.Value - time.StartLocal).TotalHours;
+            }
+        }
+
+        return hours;
+    }
+
+    private (double, double) ComputeOvertime()
+    {
+        int currentWeek = 0;
+        double currentWeekRegular = 0;
+        double regular = 0;
+        double overtime = 0;
+
+        foreach (Day day in this.MergedPayPeriod.Days)
+        {
+            int week = (int)(day.DayLocal - this.MergedPayPeriod.Days[0].DayLocal).TotalDays / 7;
+            if (week != currentWeek)
+            {
+                currentWeek = week;
+                currentWeekRegular = 0;
+            }
+
+            foreach (Time time in day.Times.Where(t => t.Type == TimeType.Work && t.EndLocal.HasValue && t.EndLocal.Value > t.StartLocal))
+            {
+                double hours = (time.EndLocal.Value - time.StartLocal).TotalHours;
+
+                if (currentWeekRegular + hours > 40)
+                {
+                    regular += 40 - currentWeekRegular;
+                    overtime += (currentWeekRegular + hours) - 40;
+                    currentWeekRegular = 40;
+                }
+                else
+                {
+                    regular += hours;
+                    currentWeekRegular += hours;
+                }
+            }
+        }
+
+        return (regular, overtime);
+    }
+
     private double HoursFor(TimeDisplayType type)
     {
         return type switch
         {
-            TimeDisplayType.Regular => 1,
-            TimeDisplayType.Overtime => 2,
-            TimeDisplayType.Vacation => 3,
-            TimeDisplayType.Holiday => 4,
-            TimeDisplayType.Sick => 5,
-            TimeDisplayType.Total =>
-                this.HoursFor(TimeDisplayType.Regular) +
-                this.HoursFor(TimeDisplayType.Overtime) +
-                this.HoursFor(TimeDisplayType.Vacation) +
-                this.HoursFor(TimeDisplayType.Holiday) +
-                this.HoursFor(TimeDisplayType.Sick),
+            TimeDisplayType.Regular => this.ComputeOvertime().Item1,
+            TimeDisplayType.Overtime => this.ComputeOvertime().Item2,
+            TimeDisplayType.Vacation => this.HoursFor(TimeType.Vacation),
+            TimeDisplayType.Holiday => this.HoursFor(TimeType.Holiday),
+            TimeDisplayType.Sick => this.HoursFor(TimeType.Sick),
+            TimeDisplayType.Total => this.HoursFor(TimeType.Work, TimeType.Vacation, TimeType.Holiday, TimeType.Sick),
             _ => throw new InvalidOperationException($"Unexpected TimeDisplayType: {type}")
         };
     }
