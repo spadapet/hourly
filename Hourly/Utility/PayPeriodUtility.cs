@@ -9,12 +9,9 @@ public static class PayPeriodUtility
         return user.TimeToPayPeriodStartLocal(payPeriod.Days[0].DayLocal).DayToRowKey(admin);
     }
 
-    public static PayPeriod NewPayPeriod(DateTime startDayLocal, PayPeriodType type, double payRate)
+    public static PayPeriod NewPayPeriod(DateTime startDayLocal, PayPeriodType type)
     {
-        PayPeriod payPeriod = new()
-        {
-            PayRate = payRate,
-        };
+        PayPeriod payPeriod = new();
 
         for (int i = 0; i < type.DaysPerPeriod(); i++)
         {
@@ -27,7 +24,7 @@ public static class PayPeriodUtility
         return payPeriod;
     }
 
-    public static void Merge(this PayPeriod mergeInto, PayPeriod mergeFrom)
+    public static void MergeDays(this PayPeriod mergeInto, PayPeriod mergeFrom)
     {
         foreach (Day dayFrom in mergeFrom.Days)
         {
@@ -87,7 +84,7 @@ public static class PayPeriodUtility
             PayRate = payPeriod.PayRate,
         };
 
-        fixedPayPeriod.Merge(payPeriod);
+        fixedPayPeriod.MergeDays(payPeriod);
 
         return fixedPayPeriod;
     }
@@ -113,5 +110,97 @@ public static class PayPeriodUtility
         {
             throw new InvalidOperationException($"Pay period is missing day: {punchTime}");
         }
+    }
+
+    public static (double, double) ComputeNormalAndOvertimeHours(this PayPeriod payPeriod)
+    {
+        int currentWeek = 0;
+        double currentWeekRegular = 0;
+        double regular = 0;
+        double overtime = 0;
+
+        foreach (Day day in payPeriod.Days)
+        {
+            int week = (int)(day.DayLocal - payPeriod.Days[0].DayLocal).TotalDays / 7;
+            if (week != currentWeek)
+            {
+                currentWeek = week;
+                currentWeekRegular = 0;
+            }
+
+            foreach (Time time in day.Times.Where(t => t.Type == TimeType.Work && t.EndLocal.HasValue && t.EndLocal.Value > t.StartLocal))
+            {
+                double hours = (time.EndLocal.Value - time.StartLocal).TotalHours;
+
+                if (currentWeekRegular + hours > 40)
+                {
+                    regular += 40 - currentWeekRegular;
+                    overtime += (currentWeekRegular + hours) - 40;
+                    currentWeekRegular = 40;
+                }
+                else
+                {
+                    regular += hours;
+                    currentWeekRegular += hours;
+                }
+            }
+        }
+
+        return (regular, overtime);
+    }
+
+    /// <summary>
+    /// Adds hours of a certain type among all days in the pay period
+    /// </summary>
+    public static double HoursFor(this PayPeriod payPeriod, params TimeType[] types)
+    {
+        double hours = 0;
+
+        foreach (Day day in payPeriod.Days)
+        {
+            foreach (Time time in day.Times.Where(t => Array.IndexOf(types, t.Type) != -1 && t.EndLocal.HasValue && t.EndLocal.Value > t.StartLocal))
+            {
+                hours += (time.EndLocal.Value - time.StartLocal).TotalHours;
+            }
+        }
+
+        return hours;
+    }
+
+    /// <summary>
+    /// Returns hours for display
+    /// </summary>
+    public static double HoursFor(this PayPeriod payPeriod, TimeDisplayType type)
+    {
+        return type switch
+        {
+            TimeDisplayType.Regular => payPeriod.ComputeNormalAndOvertimeHours().Item1,
+            TimeDisplayType.Overtime => payPeriod.ComputeNormalAndOvertimeHours().Item2,
+            TimeDisplayType.Vacation => payPeriod.HoursFor(TimeType.Vacation),
+            TimeDisplayType.Holiday => payPeriod.HoursFor(TimeType.Holiday),
+            TimeDisplayType.Sick => payPeriod.HoursFor(TimeType.Sick),
+            TimeDisplayType.Total => payPeriod.HoursFor(TimeType.Work, TimeType.Vacation, TimeType.Holiday, TimeType.Sick),
+            _ => throw new InvalidOperationException($"Unexpected TimeDisplayType: {type}")
+        };
+    }
+
+    /// <summary>
+    /// Returns dollars to display
+    /// </summary>
+    public static double PayFor(this PayPeriod payPeriod, TimeDisplayType type)
+    {
+        if (payPeriod.PayRate.HasValue)
+        {
+            return type switch
+            {
+                TimeDisplayType.Overtime => payPeriod.HoursFor(type) * payPeriod.PayRate.Value * 1.5,
+                TimeDisplayType.Total =>
+                    payPeriod.HoursFor(type) * payPeriod.PayRate.Value +
+                    payPeriod.HoursFor(TimeDisplayType.Overtime) * payPeriod.PayRate.Value * 0.5,
+                _ => payPeriod.HoursFor(type) * payPeriod.PayRate.Value
+            };
+        }
+
+        return 0;
     }
 }

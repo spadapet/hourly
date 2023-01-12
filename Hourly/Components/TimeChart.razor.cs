@@ -20,16 +20,6 @@ public sealed partial class TimeChart : ComponentBase
     private PayPeriod MergedPayPeriod { get; set; }
     private PayPeriod UserPayPeriod { get; set; }
 
-    private enum TimeDisplayType
-    {
-        Regular,
-        Overtime,
-        Vacation,
-        Holiday,
-        Sick,
-        Total,
-    }
-
     protected override async Task OnParametersSetAsync()
     {
         this.ViewModel.PunchClockAction = this.PunchClock;
@@ -41,7 +31,7 @@ public sealed partial class TimeChart : ComponentBase
             DateTime startDayLocal = this.ViewModel.User.TimeToPayPeriodStartLocal(this.ViewModel.ForDayLocal);
             this.MergedPayPeriod = await this.FetchPayPeriod(startDayLocal, admin: true);
             this.UserPayPeriod = await this.FetchPayPeriod(startDayLocal, admin: false);
-            this.MergedPayPeriod.Merge(this.UserPayPeriod);
+            this.MergedPayPeriod.MergeDays(this.UserPayPeriod);
         }, runIfDisabled: false);
 
         await base.OnParametersSetAsync();
@@ -53,7 +43,12 @@ public sealed partial class TimeChart : ComponentBase
 
         PayPeriod payPeriod = entity.HasValue
             ? entity.Value.Deserialize<PayPeriod>().Canonicalize()
-            : PayPeriodUtility.NewPayPeriod(startDayLocal, this.ViewModel.User.PayPeriodType, this.ViewModel.User.PayRate);
+            : PayPeriodUtility.NewPayPeriod(startDayLocal, this.ViewModel.User.PayPeriodType);
+
+        if (admin && !payPeriod.PayRate.HasValue && startDayLocal <= TimeUtility.LocalDate)
+        {
+            payPeriod.PayRate = this.ViewModel.User.PayRate;
+        }
 
         return payPeriod;
     }
@@ -123,84 +118,6 @@ public sealed partial class TimeChart : ComponentBase
 
             await this.SaveChanges(payPeriod, admin: false);
         });
-    }
-
-    private double HoursFor(params TimeType[] types)
-    {
-        double hours = 0;
-
-        foreach (Day day in this.MergedPayPeriod.Days)
-        {
-            foreach (Time time in day.Times.Where(t => Array.IndexOf(types, t.Type) != -1 && t.EndLocal.HasValue && t.EndLocal.Value > t.StartLocal))
-            {
-                hours += (time.EndLocal.Value - time.StartLocal).TotalHours;
-            }
-        }
-
-        return hours;
-    }
-
-    private (double, double) ComputeOvertime()
-    {
-        int currentWeek = 0;
-        double currentWeekRegular = 0;
-        double regular = 0;
-        double overtime = 0;
-
-        foreach (Day day in this.MergedPayPeriod.Days)
-        {
-            int week = (int)(day.DayLocal - this.MergedPayPeriod.Days[0].DayLocal).TotalDays / 7;
-            if (week != currentWeek)
-            {
-                currentWeek = week;
-                currentWeekRegular = 0;
-            }
-
-            foreach (Time time in day.Times.Where(t => t.Type == TimeType.Work && t.EndLocal.HasValue && t.EndLocal.Value > t.StartLocal))
-            {
-                double hours = (time.EndLocal.Value - time.StartLocal).TotalHours;
-
-                if (currentWeekRegular + hours > 40)
-                {
-                    regular += 40 - currentWeekRegular;
-                    overtime += (currentWeekRegular + hours) - 40;
-                    currentWeekRegular = 40;
-                }
-                else
-                {
-                    regular += hours;
-                    currentWeekRegular += hours;
-                }
-            }
-        }
-
-        return (regular, overtime);
-    }
-
-    private double HoursFor(TimeDisplayType type)
-    {
-        return type switch
-        {
-            TimeDisplayType.Regular => this.ComputeOvertime().Item1,
-            TimeDisplayType.Overtime => this.ComputeOvertime().Item2,
-            TimeDisplayType.Vacation => this.HoursFor(TimeType.Vacation),
-            TimeDisplayType.Holiday => this.HoursFor(TimeType.Holiday),
-            TimeDisplayType.Sick => this.HoursFor(TimeType.Sick),
-            TimeDisplayType.Total => this.HoursFor(TimeType.Work, TimeType.Vacation, TimeType.Holiday, TimeType.Sick),
-            _ => throw new InvalidOperationException($"Unexpected TimeDisplayType: {type}")
-        };
-    }
-
-    private double PayFor(TimeDisplayType type)
-    {
-        return type switch
-        {
-            TimeDisplayType.Overtime => this.HoursFor(type) * this.MergedPayPeriod.PayRate * 1.5,
-            TimeDisplayType.Total =>
-                this.HoursFor(type) * this.MergedPayPeriod.PayRate +
-                this.HoursFor(TimeDisplayType.Overtime) * this.MergedPayPeriod.PayRate * 0.5,
-            _ => this.HoursFor(type) * this.MergedPayPeriod.PayRate
-        };
     }
 
     private async Task DisableDuring(Func<Task> taskFunc, bool runIfDisabled = true)

@@ -11,6 +11,11 @@ else if (!this.ViewModel.Admin)
     <table cellspacing="0" cellpadding="4">
         @foreach (Day day in this.MergedPayPeriod.Days)
         {
+            if (day.Times.Count == 0 && (day.DayLocal.DayOfWeek == DayOfWeek.Sunday || day.DayLocal.DayOfWeek == DayOfWeek.Saturday))
+            {
+                continue;
+            }
+
             <tr>
                 <td><b>@day.DayLocal.ToString("ddd"),</b></td>
                 <td><b>@day.DayLocal.ToString("MMM d")</b></td>
@@ -69,44 +74,47 @@ else // Admin
     </table>
 }
 
-@if (this.MergedPayPeriod != null)
+@if (this.MergedPayPeriod != null && this.MergedPayPeriod.PayRate.HasValue)
 {
     <hr />
 
-    <p>Rate is @(this.MergedPayPeriod.PayRate.ToString("C2")), overtime is @((this.MergedPayPeriod.PayRate * 1.5).ToString("C"))</p>
+    <p>Rate is @(this.MergedPayPeriod.PayRate.Value.ToString("C2")), overtime is @((this.MergedPayPeriod.PayRate.Value * 1.5).ToString("C"))</p>
     <table style="border-collapse:collapse" class="totals">
         <tr>
             <td>Regular</td>
-            <td>@(this.HoursFor(TimeDisplayType.Regular).ToString("N2")) hours</td>
-            <td>= @(this.PayFor(TimeDisplayType.Regular).ToString("C2"))</td>
+            <td>@(this.MergedPayPeriod.HoursFor(TimeDisplayType.Regular).ToString("N2")) hours</td>
+            <td>= @(this.MergedPayPeriod.PayFor(TimeDisplayType.Regular).ToString("C2"))</td>
         </tr>
         <tr>
             <td>Overtime</td>
-            <td>@(this.HoursFor(TimeDisplayType.Overtime).ToString("N2")) hours</td>
-            <td>= @(this.PayFor(TimeDisplayType.Overtime).ToString("C2"))</td>
+            <td>@(this.MergedPayPeriod.HoursFor(TimeDisplayType.Overtime).ToString("N2")) hours</td>
+            <td>= @(this.MergedPayPeriod.PayFor(TimeDisplayType.Overtime).ToString("C2"))</td>
         </tr>
         <tr>
             <td>Vacation</td>
-            <td>@(this.HoursFor(TimeDisplayType.Vacation).ToString("N2")) hours</td>
-            <td>= @(this.PayFor(TimeDisplayType.Vacation).ToString("C2"))</td>
+            <td>@(this.MergedPayPeriod.HoursFor(TimeDisplayType.Vacation).ToString("N2")) hours</td>
+            <td>= @(this.MergedPayPeriod.PayFor(TimeDisplayType.Vacation).ToString("C2"))</td>
         </tr>
         <tr>
             <td>Holiday</td>
-            <td>@(this.HoursFor(TimeDisplayType.Holiday).ToString("N2")) hours</td>
-            <td>= @(this.PayFor(TimeDisplayType.Holiday).ToString("C2"))</td>
+            <td>@(this.MergedPayPeriod.HoursFor(TimeDisplayType.Holiday).ToString("N2")) hours</td>
+            <td>= @(this.MergedPayPeriod.PayFor(TimeDisplayType.Holiday).ToString("C2"))</td>
         </tr>
         <tr>
             <td>Sick</td>
-            <td>@(this.HoursFor(TimeDisplayType.Sick).ToString("N2")) hours</td>
-            <td>= @(this.PayFor(TimeDisplayType.Sick).ToString("C2"))</td>
+            <td>@(this.MergedPayPeriod.HoursFor(TimeDisplayType.Sick).ToString("N2")) hours</td>
+            <td>= @(this.MergedPayPeriod.PayFor(TimeDisplayType.Sick).ToString("C2"))</td>
         </tr>
         <tr class="last-row">
             <td><b>Total</b></td>
-            <td><b>@(this.HoursFor(TimeDisplayType.Total).ToString("N2")) hours</b></td>
-            <td><b>= @(this.PayFor(TimeDisplayType.Total).ToString("C2"))</b></td>
+            <td><b>@(this.MergedPayPeriod.HoursFor(TimeDisplayType.Total).ToString("N2")) hours</b></td>
+            <td><b>= @(this.MergedPayPeriod.PayFor(TimeDisplayType.Total).ToString("C2"))</b></td>
         </tr>
     </table>
+}
 
+@if (this.MergedPayPeriod != null)
+{
     <hr />
 
     <p>

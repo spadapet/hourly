@@ -21,12 +21,26 @@ public enum TimeType
     Deleted,
 }
 
+/// <summary>
+/// Only for UI display
+/// </summary>
+public enum TimeDisplayType
+{
+    None,
+    Regular,
+    Overtime,
+    Vacation,
+    Holiday,
+    Sick,
+    Total,
+}
+
 public sealed class PayPeriod
 {
     public List<Day> Days { get; } = new();
     public string Notes { get; set; }
     public string PrivateNotes { get; set; }
-    public double PayRate { get; set; }
+    public double? PayRate { get; set; }
 }
 
 public sealed class Day
